@@ -25,8 +25,8 @@ format if you want to use a different image file.
 #include <string.h>
 
 //Reference the binary-included jpeg file
-extern const uint8_t image_jpg_start[]   asm("_binary_image_stella_jpg_start");
-extern const uint8_t image_jpg_end[]     asm("_binary_image_stella_jpg_end");
+extern const uint8_t image_jpg_start[]   asm("_binary_image3_jpg_start");
+extern const uint8_t image_jpg_end[]     asm("_binary_image3_jpg_end");
 //Define the height and width of the jpeg file. Make sure this matches the actual jpeg
 //dimensions.
 #define IMAGE_W 96
