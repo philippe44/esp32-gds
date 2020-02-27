@@ -216,6 +216,6 @@ void app_main()
     }
 	
 	// just to complete example
-	if (Image) free(Image);
+	if (image) free(image);
 }
 

@@ -90,10 +90,13 @@ static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scal
 	Decoder.scale = Scale;
 
     if (Res == JDR_OK && !SizeOnly) {
-		// ready to decode		
+		// find the scaling factor
 		Context.OutData = malloc(Decoder.width * Decoder.height * sizeof(uint16_t));
-		uint8_t N = 0, iScale =  1.0 / Scale;
-		while (iScale >>= 1) N++;
+		uint8_t N = 0, ScaleInt =  ceil(1.0 / Scale);
+		ScaleInt--; ScaleInt |= ScaleInt >> 1; ScaleInt |= ScaleInt >> 2; ScaleInt++;
+		while (ScaleInt >>= 1) N++;
+		
+		// ready to decode		
 		if (Context.OutData) {
 			Context.Width = Decoder.width / (1 << N);
 			Context.Height = Decoder.height / (1 << N);
