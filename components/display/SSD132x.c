@@ -165,6 +165,25 @@ static void IRAM_ATTR DrawPixel1Fast( struct GDS_Device* Device, int X, int Y, i
     }
 }
 
+static void ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color ) {
+	uint8_t _Color = Color == GDS_COLOR_BLACK ? 0: 0xff;
+	uint8_t Width = Device->Width >> 3;
+	uint8_t *optr = Device->Framebuffer;
+
+	for (int r = y1; r <= y2; r++) {
+		int c = x1;
+		// for a row that is not on a boundary, not column opt can be done, so handle all columns on that line
+		while (c & 0x07 && c <= x2) DrawPixel1Fast( Device, c++, r, Color );
+		// at this point we are aligned on column boundary
+		int chunk = (x2 - c + 1) >> 3;
+		memset(optr + Width * r + (c >> 3), _Color, chunk );
+		c += chunk * 8;
+		while (c <= x2) DrawPixel1Fast( Device, c++, r, Color );
+	}
+	
+	Device->Dirty = true;
+}
+
 static void DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color ) {
 	uint8_t *optr = Device->Framebuffer;
 	
@@ -312,6 +331,7 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 		Device->Update = Update1;
 		Device->DrawPixelFast = DrawPixel1Fast;
 		Device->DrawBitmapCBR = DrawBitmapCBR;
+		Device->ClearWindow = ClearWindow;
 	} else {
 		Device->Depth = 4;
 	}	

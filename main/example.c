@@ -21,14 +21,20 @@
 #include "gds_draw.h"
 #include "gds_text.h"
 #include "gds_font.h"
-
-#include "decode_image.h"
+#include "gds_image.h"
 
 #define I2C_ADDRESS	0x3C
 
 static char TAG[] = "display";
 
+//Reference the binary-included jpeg file
+extern const uint8_t image_jpg_start[]   asm("_binary_image_jpg_start");
+extern const uint8_t image_jpg_end[]     asm("_binary_image_jpg_end");
+extern const uint8_t image2_jpg_start[]   asm("_binary_image2_jpg_start");
+extern const uint8_t image2_jpg_end[]     asm("_binary_image2_jpg_end");
+
 int i2c_system_port = 0;
+int i2c_system_speed = 400000;
 int spi_system_host = SPI2_HOST;
 int spi_system_dc_gpio = 5;
 
@@ -65,7 +71,7 @@ bool init_display (char *config, char *welcome) {
 				
 		if ((p = strcasestr(config, "address")) != NULL) address = atoi(strchr(p, '=') + 1);
 		
-		GDS_I2CInit( i2c_system_port, -1, -1 ) ;
+		GDS_I2CInit( i2c_system_port, -1, -1, i2c_system_speed ) ;
 		GDS_I2CAttachDevice( display, width, height, address, -1 );
 		
 		ESP_LOGI(TAG, "Display is I2C on port %u", address);
@@ -104,7 +110,7 @@ void app_main()
 		.sda_pullup_en = GPIO_PULLUP_ENABLE,
 		.scl_io_num = 23,
 		.scl_pullup_en = GPIO_PULLUP_ENABLE,
-		.master.clk_speed = 400000,
+		.master.clk_speed = I2c_system_speed,
 	};
 #else	
 	spi_bus_config_t BusConfig = {
@@ -117,6 +123,7 @@ void app_main()
 #endif	
 
 #ifdef I2C_MODE
+	// can also be done by GDS when SDA & SCL are passed to GDS_I2CInit()
 	i2c_param_config(i2c_system_port, &i2c_config);
 	i2c_driver_install(i2c_system_port, i2c_config.mode, 0, 0, 0 );
 	init_display("I2C,driver=SSD1306,width=128,height=64,HFlip,VFlip", "hello I2C");
@@ -152,10 +159,13 @@ void app_main()
 	
 	int count = 0;
 	long long int avg = 0;
-	static uint16_t **image;
-	bool show_image = false;
+	static uint16_t *image;
+	int show = 0;
+	int image_width, image_height;
 	
-	ESP_LOGI(TAG, "Image decode result %d", decode_image(&image));
+	// actual scaling factor is closest ^2
+	image = GDS_DecodeJPEG((uint8_t*) image_jpg_start, &image_width, &image_height, 1);
+	ESP_LOGI(TAG, "Image size %dx%d", image_width, image_height);
 	
 	while(1) {
 		char String[128];
@@ -164,8 +174,10 @@ void app_main()
 		int start_b = xthal_get_ccount();
 		GDS_ClearExt( display, false, false, 0, 32, -1, -1);
 
-		if (show_image) {
-			GDS_DrawRGB16(display, 16, 32, 96, 96, GDS_RGB565, image);
+		if (show == 1 && image) {
+			GDS_DrawRGB16(display, image, 16, 32, image_width, image_height, GDS_RGB565 );
+		} else if (show == 2) {
+			GDS_DrawJPEG(display, (uint8_t*) image2_jpg_start, 0, 32, GDS_IMAGE_FIT | GDS_IMAGE_CENTER);		
 		} else {
 			for (int i = 0; i < NB_BARS; i++) {
 				int x1 = border + i*(bar_width + bar_gap);
@@ -184,6 +196,7 @@ void app_main()
 					GDS_DrawLine(display, x1, y1 - bars[i].max + 1, x1 + bar_width - 1, y1 - bars[i].max + 1, GDS_COLOR_WHITE);			
 				}	
 			}
+			show = 0;
 		}	
 		
 		GDS_Update(display);
@@ -196,10 +209,13 @@ void app_main()
 			sprintf(String, "CPU: %d", (int) (avg / count));
 			ESP_LOGI(TAG, "Average is %d, count %d", (int) (avg / count), count);
 			GDS_TextLine(display, 2, GDS_TEXT_LEFT, GDS_TEXT_CLEAR | GDS_TEXT_UPDATE, String);
-			show_image = !show_image;
+			show++;
 		}	
 		
 		vTaskDelay(100 / portTICK_RATE_MS);
     }
+	
+	// just to complete example
+	if (Image) free(Image);
 }
 

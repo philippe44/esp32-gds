@@ -69,21 +69,22 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 			memset( Device->Framebuffer, Color == GDS_COLOR_BLACK ? 0 : 0xff, Device->FramebufferSize );
 		} else {
 			uint8_t _Color = Color == GDS_COLOR_BLACK ? 0: 0xff;
-			uint8_t Width = Device->Width;
+			uint8_t Width = Device->Width >> 3;
+			uint8_t *optr = Device->Framebuffer;
 			// try to do byte processing as much as possible
 			for (int r = y1; r <= y2;) {
 				int c = x1;
 				// for a row that is not on a boundary, no optimization possible
 				while (r & 0x07 && r <= y2) {
-					for (c = x1; c <= x2; c++) GDS_DrawPixelFast( Device, c, r, Color);
+					for (c = x1; c <= x2; c++) GDS_DrawPixelFast( Device, c, r, Color );
 					r++;
 				}
 				// go fast if we have more than 8 lines to write
-				if (r + 8 < y2) {
-					memset(Device->Framebuffer + Width * r / 8 + x1, _Color, x2 - x1 + 1);
+				if (r + 8 <= y2) {
+					memset(optr + Width * r + x1, _Color, x2 - x1 + 1);
 					r += 8;
 				} else while (r <= y2) {
-					for (c = x1; c <= x2; c++) GDS_DrawPixelFast( Device, c, r, Color);
+					for (c = x1; c <= x2; c++) GDS_DrawPixelFast( Device, c, r, Color );
 					r++;
 				}
 			}
@@ -95,12 +96,13 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 		} else {
 			uint8_t _Color = Color | (Color << 4);
 			uint8_t Width = Device->Width;
+			uint8_t *optr = Device->Framebuffer;
 			// try to do byte processing as much as possible
 			for (int r = y1; r <= y2; r++) {
 				int c = x1;
 				if (c & 0x01) GDS_DrawPixelFast( Device, c++, r, Color);
 				int chunk = (x2 - c + 1) >> 1;
-				memset(Device->Framebuffer + ((r * Width + c)  >> 1), _Color, chunk);
+				memset(optr + ((r * Width + c)  >> 1), _Color, chunk);
 				if (c + chunk <= x2) GDS_DrawPixelFast( Device, x2, r, Color);
 			}
 		}	

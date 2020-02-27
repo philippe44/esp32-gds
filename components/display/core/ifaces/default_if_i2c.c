@@ -17,6 +17,7 @@
 #include "gds_default_if.h"
 
 static int I2CPortNumber;
+static int I2CWait;
 
 static const int GDS_I2C_COMMAND_MODE = 0x80;
 static const int GDS_I2C_DATA_MODE = 0x40;
@@ -31,8 +32,10 @@ static bool I2CDefaultWriteData( struct GDS_Device* Device, const uint8_t* Data,
  * 
  * Returns true on successful init of the i2c bus.
  */
-bool GDS_I2CInit( int PortNumber, int SDA, int SCL ) {
+bool GDS_I2CInit( int PortNumber, int SDA, int SCL, int Speed ) {
 	I2CPortNumber = PortNumber;
+	
+	I2CWait = pdMS_TO_TICKS( Speed ? Speed / 4000 : 100 );
 	
 	if (SDA != -1 && SCL != -1) {
 		i2c_config_t Config = { 0 };
@@ -42,7 +45,7 @@ bool GDS_I2CInit( int PortNumber, int SDA, int SCL ) {
 		Config.sda_pullup_en = GPIO_PULLUP_ENABLE;
 		Config.scl_io_num = SCL;
 		Config.scl_pullup_en = GPIO_PULLUP_ENABLE;
-		Config.master.clk_speed = 250000;
+		Config.master.clk_speed = Speed ? Speed : 400000;
 
 		ESP_ERROR_CHECK_NONFATAL( i2c_param_config( I2CPortNumber, &Config ), return false );
 		ESP_ERROR_CHECK_NONFATAL( i2c_driver_install( I2CPortNumber, Config.mode, 0, 0, 0 ), return false );
@@ -98,7 +101,7 @@ static bool I2CDefaultWriteBytes( int Address, bool IsCommand, const uint8_t* Da
         ESP_ERROR_CHECK_NONFATAL( i2c_master_write( CommandHandle, ( uint8_t* ) Data, DataLength, true ), goto error );
         ESP_ERROR_CHECK_NONFATAL( i2c_master_stop( CommandHandle ), goto error );
 
-        ESP_ERROR_CHECK_NONFATAL( i2c_master_cmd_begin( I2CPortNumber, CommandHandle, pdMS_TO_TICKS( 1000 ) ), goto error );
+        ESP_ERROR_CHECK_NONFATAL( i2c_master_cmd_begin( I2CPortNumber, CommandHandle, I2CWait ), goto error );
         i2c_cmd_link_delete( CommandHandle );
     }
 

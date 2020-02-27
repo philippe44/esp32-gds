@@ -9,10 +9,6 @@
 extern "C" {
 #endif
 
-struct GDS_Device;
-
-enum { GDS_RGB565, GDS_RGB555, GDS_RGB444 };
-
 #ifndef _GDS_PRIVATE_H_
 void IRAM_ATTR GDS_DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color );
 void IRAM_ATTR GDS_DrawPixel( struct GDS_Device* Device, int X, int Y, int Color );
@@ -21,7 +17,6 @@ void GDS_DrawHLine( struct GDS_Device* Device, int x, int y, int Width, int Colo
 void GDS_DrawVLine( struct GDS_Device* Device, int x, int y, int Height, int Color );
 void GDS_DrawLine( struct GDS_Device* Device, int x0, int y0, int x1, int y1, int Color );
 void GDS_DrawBox( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color, bool Fill );
-void GDS_DrawRGB16( struct GDS_Device* Device, int x, int y, int Width, int Height, int RGB_Mode, uint16_t **Image );
 
 // draw a bitmap with source 1-bit depth organized in column and col0 = bit7 of byte 0 
 void GDS_DrawBitmapCBR( struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color);

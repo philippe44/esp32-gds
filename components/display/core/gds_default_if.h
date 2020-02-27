@@ -7,7 +7,7 @@ extern "C" {
 
 struct GDS_Device;
 
-bool GDS_I2CInit( int PortNumber, int SDA, int SCL );
+bool GDS_I2CInit( int PortNumber, int SDA, int SCL, int speed );
 bool GDS_I2CAttachDevice( struct GDS_Device* Device, int Width, int Height, int I2CAddress, int RSTPin );
 
 bool GDS_SPIInit( int SPI, int DC );

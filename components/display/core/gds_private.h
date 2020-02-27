@@ -105,7 +105,7 @@ struct GDS_Device {
 	void (*DrawPixelFast)( struct GDS_Device* Device, int X, int Y, int Color );
 	void (*DrawBitmapCBR)(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color );
 	// may provide for optimization
-	void (*DrawRGB16)( struct GDS_Device* Device, int x, int y, int Width, int Height, int RGB_Mode, uint16_t **Image );
+	void (*DrawRGB16)( struct GDS_Device* Device, int x, int y, int Width, int Height, int RGB_Mode, uint16_t *Image );
 	void (*ClearWindow)( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color );
 		    
 	// interface-specific methods	
