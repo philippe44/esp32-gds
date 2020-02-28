@@ -25,7 +25,7 @@ struct SSD1306_Private {
 	uint8_t *Shadowbuffer;
 };
 
-// Functions are not deckared to minimize # of lines
+// Functions are not declared to minimize # of lines
 
 static void SetColumnAddress( struct GDS_Device* Device, uint8_t Start, uint8_t End ) {
 	Device->WriteCommand( Device, 0x21 );
