@@ -58,7 +58,7 @@ void GDS_DrawHLine( struct GDS_Device* Device, int x, int y, int Width, int Colo
 	if (XEnd >= Device->Width) XEnd = Device->Width - 1;
 	
 	if (y < 0) y = 0;
-	else if (y >= Device->Height) x = Device->Height - 1;
+	else if (y >= Device->Height) y = Device->Height - 1;
 
     for ( ; x < XEnd; x++ ) GDS_DrawPixelFast( Device, x, y, Color );
 }
