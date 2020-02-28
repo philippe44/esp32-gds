@@ -181,7 +181,6 @@ void app_main()
 		} else if (show == 2) {
 			GDS_DrawJPEG(display, (uint8_t*) image2_jpg_start, 0, 32, GDS_IMAGE_FIT | GDS_IMAGE_CENTER_X);		
 		} else {
-			/*
 			for (int i = 0; i < NB_BARS; i++) {
 				int x1 = border + i*(bar_width + bar_gap);
 				int y1 = height - 1;
@@ -199,7 +198,6 @@ void app_main()
 					GDS_DrawLine(display, x1, y1 - bars[i].max + 1, x1 + bar_width - 1, y1 - bars[i].max + 1, GDS_COLOR_WHITE);			
 				}	
 			}
-			*/
 		}	
 		
 		GDS_Update(display);
