@@ -23,6 +23,8 @@
 #include "gds_font.h"
 #include "gds_image.h"
 
+#define I2C_MODE
+
 #define I2C_ADDRESS	0x3C
 
 static char TAG[] = "display";
@@ -106,11 +108,11 @@ void app_main()
 #ifdef I2C_MODE	
 	i2c_config_t i2c_config = {
 		.mode = I2C_MODE_MASTER,
-		.sda_io_num = 22,
+		.sda_io_num = 25,
 		.sda_pullup_en = GPIO_PULLUP_ENABLE,
-		.scl_io_num = 23,
+		.scl_io_num = 26,
 		.scl_pullup_en = GPIO_PULLUP_ENABLE,
-		.master.clk_speed = I2c_system_speed,
+		.master.clk_speed = i2c_system_speed,
 	};
 #else	
 	spi_bus_config_t BusConfig = {
@@ -169,7 +171,7 @@ void app_main()
 	
 	while(1) {
 		char String[128];
-		int bar_height = 64;
+		int bar_height = GDS_GetHeight(display) / 2;
 
 		int start_b = xthal_get_ccount();
 		GDS_ClearExt( display, false, false, 0, 32, -1, -1);
@@ -177,8 +179,9 @@ void app_main()
 		if (show == 1 && image) {
 			GDS_DrawRGB16(display, image, 16, 32, image_width, image_height, GDS_RGB565 );
 		} else if (show == 2) {
-			GDS_DrawJPEG(display, (uint8_t*) image2_jpg_start, 0, 32, GDS_IMAGE_FIT | GDS_IMAGE_CENTER);		
+			GDS_DrawJPEG(display, (uint8_t*) image2_jpg_start, 0, 32, GDS_IMAGE_FIT | GDS_IMAGE_CENTER_X);		
 		} else {
+			/*
 			for (int i = 0; i < NB_BARS; i++) {
 				int x1 = border + i*(bar_width + bar_gap);
 				int y1 = height - 1;
@@ -196,20 +199,21 @@ void app_main()
 					GDS_DrawLine(display, x1, y1 - bars[i].max + 1, x1 + bar_width - 1, y1 - bars[i].max + 1, GDS_COLOR_WHITE);			
 				}	
 			}
-			show = 0;
+			*/
 		}	
 		
 		GDS_Update(display);
 		
 		int end_b = xthal_get_ccount();
 		avg += end_b - start_b;
-		count++;
 		
-		if ((count % 10) == 0) {
-			sprintf(String, "CPU: %d", (int) (avg / count));
-			ESP_LOGI(TAG, "Average is %d, count %d", (int) (avg / count), count);
+		if (count++ == 10) {
+			sprintf(String, "CPU %d", (int) (avg / count));
+			ESP_LOGI(TAG, "Average is %d", (int) (avg / count));
 			GDS_TextLine(display, 2, GDS_TEXT_LEFT, GDS_TEXT_CLEAR | GDS_TEXT_UPDATE, String);
-			show++;
+			avg = 0;
+			count = 0;
+			show = (show + 1) % 3;
 		}	
 		
 		vTaskDelay(100 / portTICK_RATE_MS);

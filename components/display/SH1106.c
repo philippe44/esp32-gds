@@ -21,6 +21,10 @@
 
 static char TAG[] = "SH1106";
 
+struct SH1106_Private {
+	uint8_t *Shadowbuffer;
+};
+
 // Functions are not declared to minimize # of lines
 
 static void SetColumnAddress( struct GDS_Device* Device, uint8_t Start, uint8_t End ) {
@@ -36,9 +40,10 @@ static void SetPageAddress( struct GDS_Device* Device, uint8_t Start, uint8_t En
 
 static void Update( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER
+	struct SH1106_Private *Private = (struct SH1106_Private*) Device->Private;
 	// not sure the compiler does not have to redo all calculation in for loops, so local it is
 	int width = Device->Width, rows = Device->Height / 8;
-	uint8_t *optr = Device->Shadowbuffer, *iptr = Device->Framebuffer;
+	uint8_t *optr = Private->Shadowbuffer, *iptr = Device->Framebuffer;
 	
 	// by row, find first and last columns that have been updated
 	for (int r = 0; r < rows; r++) {
@@ -55,7 +60,7 @@ static void Update( struct GDS_Device* Device ) {
 		if (first--) {
 			SetColumnAddress( Device, first, last );
 			SetPageAddress( Device, r, r);
-			Device->WriteData( Device, Device->Shadowbuffer + r*width + first, last - first + 1);
+			Device->WriteData( Device, Private->Shadowbuffer + r*width + first, last - first + 1);
 		}
 	}	
 #else	
@@ -83,15 +88,16 @@ static bool Init( struct GDS_Device* Device ) {
 	
 // benchmarks showed little gain to have SPI memory already in IRAL vs letting driver copy		
 #ifdef SHADOW_BUFFER	
+	struct SH1106_Private *Private = (struct SH1106_Private*) Device->Private;
 	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
     NullCheck( Device->Framebuffer, return false );
 #ifdef USE_IRAM
-	if (Device->IF == IF_SPI) Device->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
+	if (Device->IF == IF_SPI) Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 	else 
 #endif
-	Device->Shadowbuffer = malloc( Device->FramebufferSize );	
-	NullCheck( Device->Shadowbuffer, return false );
-	memset(Device->Shadowbuffer, 0xFF, Device->FramebufferSize);
+	Private->Shadowbuffer = malloc( Device->FramebufferSize );	
+	NullCheck( Private->Shadowbuffer, return false );
+	memset(Private->Shadowbuffer, 0xFF, Device->FramebufferSize);
 #else	// not SHADOW_BUFFER
 #ifdef USE_IRAM
 	// benchmarks showed little gain to have SPI memory already in IRAL vs letting driver copy

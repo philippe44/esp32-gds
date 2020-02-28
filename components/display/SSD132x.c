@@ -27,7 +27,7 @@ static char TAG[] = "SSD132x";
 enum { SSD1326, SSD1327 };
 
 struct SSD132x_Private {
-	uint8_t *iRAM;
+	uint8_t *iRAM, *Shadowbuffer;
 	uint8_t ReMap, PageSize;
 	uint8_t Model;
 };
@@ -73,7 +73,7 @@ static void Update4( struct GDS_Device* Device ) {
 	SetColumnAddress( Device, 0, Device->Width / 2 - 1);
 	
 #ifdef SHADOW_BUFFER
-	uint16_t *optr = (uint16_t*) Device->Shadowbuffer, *iptr = (uint16_t*) Device->Framebuffer;
+	uint16_t *optr = (uint16_t*) Private->Shadowbuffer, *iptr = (uint16_t*) Device->Framebuffer;
 	bool dirty = false;
 	
 	for (int r = 0, page = 0; r < Device->Height; r++) {
@@ -92,10 +92,10 @@ static void Update4( struct GDS_Device* Device ) {
 				SetRowAddress( Device, r - page + 1, r );
 				// own use of IRAM has not proven to be much better than letting SPI do its copy
 				if (Private->iRAM) {
-					memcpy(Private->iRAM, Device->Shadowbuffer + (r - page + 1) * Device->Width / 2, page * Device->Width / 2 );
+					memcpy(Private->iRAM, Private->Shadowbuffer + (r - page + 1) * Device->Width / 2, page * Device->Width / 2 );
 					Device->WriteData( Device, Private->iRAM, Device->Width * page / 2 );
 				} else	{
-					Device->WriteData( Device, Device->Shadowbuffer + (r - page + 1) * Device->Width / 2, page * Device->Width / 2 );					
+					Device->WriteData( Device, Private->Shadowbuffer + (r - page + 1) * Device->Width / 2, page * Device->Width / 2 );					
 				}	
 				dirty = false;
 			}	
@@ -122,9 +122,10 @@ static void Update4( struct GDS_Device* Device ) {
 */ 
 static void Update1( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER
+	struct SSD132x_Private *Private = (struct SSD132x_Private*) Device->Private;
 	// not sure the compiler does not have to redo all calculation in for loops, so local it is
 	int width = Device->Width / 8, rows = Device->Height;
-	uint8_t *optr = Device->Shadowbuffer, *iptr = Device->Framebuffer;
+	uint8_t *optr = Private->Shadowbuffer, *iptr = Device->Framebuffer;
 	
 	// by row, find first and last columns that have been updated
 	for (int r = 0; r < rows; r++) {
@@ -141,7 +142,7 @@ static void Update1( struct GDS_Device* Device ) {
 		if (first--) {
 			SetColumnAddress( Device, first, last );
 			SetRowAddress( Device, r, r);
-			Device->WriteData( Device, Device->Shadowbuffer + r*width + first, last - first + 1);
+			Device->WriteData( Device, Private->Shadowbuffer + r*width + first, last - first + 1);
 		}
 	}	
 #else	
@@ -242,15 +243,15 @@ static bool Init( struct GDS_Device* Device ) {
 #ifdef USE_IRAM
 	if (Device->IF == IF_SPI) {
 		if (Device->Depth == 1) {
-			Device->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
+			Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 		} else {
-			Device->Shadowbuffer = malloc( Device->FramebufferSize );	
+			Private->Shadowbuffer = malloc( Device->FramebufferSize );	
 			Private->iRAM = heap_caps_malloc( Private->PageSize * Device->Width / 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 		}	
 	} else
 #endif
-	Device->Shadowbuffer = malloc( Device->FramebufferSize );	
-	memset(Device->Shadowbuffer, 0xFF, Device->FramebufferSize);
+	Private->Shadowbuffer = malloc( Device->FramebufferSize );	
+	memset(Private->Shadowbuffer, 0xFF, Device->FramebufferSize);
 #else	// not SHADOW_BUFFER
 #ifdef USE_IRAM
 	if (Device->IF == IF_SPI) {

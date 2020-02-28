@@ -83,7 +83,7 @@ struct GDS_Device {
     uint16_t Height;
 	uint8_t Depth;
 		
-	uint8_t* Framebuffer, *Shadowbuffer;
+	uint8_t* Framebuffer;
     uint16_t FramebufferSize;
 	bool Dirty;
 

@@ -21,6 +21,7 @@ typedef struct {
 		struct {						// DirectDraw
 			struct GDS_Device * Device;
 			int XOfs, YOfs;
+			int XMin, YMin;
 			int Depth;
 		};	
 	};	
@@ -38,9 +39,7 @@ static unsigned OutHandler(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
     uint8_t *Pixels = (uint8_t*) Bitmap;
 	
     for (int y = Frame->top; y <= Frame->bottom; y++) {
-		if (y < Context->YOfs) continue;
         for (int x = Frame->left; x <= Frame->right; x++) {
-			if (x < Context->XOfs) continue;
             // Convert the 888 to RGB565
             uint16_t Value = (*Pixels++ & ~0x07) << 8;
             Value |= (*Pixels++ & ~0x03) << 3;
@@ -57,12 +56,14 @@ static unsigned OutHandlerDirect(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
 	int Shift = 8 - Context->Depth;
 	
     for (int y = Frame->top; y <= Frame->bottom; y++) {
+		if (y < Context->YMin) continue;
         for (int x = Frame->left; x <= Frame->right; x++) {
+			if (x < Context->XMin) continue;
             // Convert the 888 to RGB565
             int Value = ((Pixels[0]*11 + Pixels[1]*59 + Pixels[2]*30) / 100) >> Shift;
 			Pixels += 3;
 			// used DrawPixel and not "fast" version as X,Y may be beyond screen
-			GDS_DrawPixel( Context->Device, Context->XOfs + x, Context->YOfs + y, Value);
+			GDS_DrawPixel( Context->Device, x + Context->XOfs, y + Context->YOfs, Value);
         }
     }
     return 1;
@@ -90,11 +91,16 @@ static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scal
 	Decoder.scale = Scale;
 
     if (Res == JDR_OK && !SizeOnly) {
-		// find the scaling factor
 		Context.OutData = malloc(Decoder.width * Decoder.height * sizeof(uint16_t));
+		
+		// find the scaling factor
 		uint8_t N = 0, ScaleInt =  ceil(1.0 / Scale);
 		ScaleInt--; ScaleInt |= ScaleInt >> 1; ScaleInt |= ScaleInt >> 2; ScaleInt++;
 		while (ScaleInt >>= 1) N++;
+		if (N > 3) {
+			ESP_LOGW(TAG, "Image will not fit %dx%d", Decoder.width, Decoder.height);
+			N = 3;
+		}	
 		
 		// ready to decode		
 		if (Context.OutData) {
@@ -102,7 +108,7 @@ static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scal
 			Context.Height = Decoder.height / (1 << N);
 			if (Width) *Width = Context.Width;
 			if (Height) *Height = Context.Height;
-			Res = jd_decomp(&Decoder, OutHandler, N > 3 ? 3 : N);
+			Res = jd_decomp(&Decoder, OutHandler, N);
 			if (Res != JDR_OK) {
 				ESP_LOGE(TAG, "Image decoder: jd_decode failed (%d)", Res);
 			}	
@@ -202,16 +208,23 @@ bool GDS_DrawJPEG( struct GDS_Device* Device, uint8_t *Source, int x, int y, int
 			uint8_t Ratio = XRatio < YRatio ? ceil(1/XRatio) : ceil(1/YRatio);
 			Ratio--; Ratio |= Ratio >> 1; Ratio |= Ratio >> 2; Ratio++;
 			while (Ratio >>= 1) N++;
+			if (N > 3) {
+				ESP_LOGW(TAG, "Image will not fit %dx%d", Decoder.width, Decoder.height);
+				N = 3;
+			}	
 			Context.Width /= 1 << N;
 			Context.Height /= 1 << N;
 		} 
 		
 		// then place it
-		if (Fit & GDS_IMAGE_CENTER_X) Context.XOfs = x + ((Device->Width - x) - Context.Width) / 2;
-		if (Fit & GDS_IMAGE_CENTER_Y) Context.YOfs = y + ((Device->Height - y) - Context.Height) / 2;
+		if (Fit & GDS_IMAGE_CENTER_X) Context.XOfs = (Device->Width + x - Context.Width) / 2;
+		if (Fit & GDS_IMAGE_CENTER_Y) Context.YOfs = (Device->Height + y - Context.Height) / 2;
 		
+		Context.XMin = x - Context.XOfs;
+		Context.YMin = y - Context.YOfs;
+					
 		// do decompress & draw
-		Res = jd_decomp(&Decoder, OutHandlerDirect, N > 3 ? 3 : N);
+		Res = jd_decomp(&Decoder, OutHandlerDirect, N);
 		if (Res == JDR_OK) {
 			Ret = true;
 		} else {	
