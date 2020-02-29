@@ -21,7 +21,7 @@
 
 static char TAG[] = "SSD1306";
 
-struct SSD1306_Private {
+struct PrivateSpace {
 	uint8_t *Shadowbuffer;
 };
 
@@ -40,7 +40,7 @@ static void SetPageAddress( struct GDS_Device* Device, uint8_t Start, uint8_t En
 
 static void Update( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER
-	struct SSD1306_Private *Private = (struct SSD1306_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	// not sure the compiler does not have to redo all calculation in for loops, so local it is
 	int width = Device->Width, rows = Device->Height / 8;
 	uint8_t *optr = Private->Shadowbuffer, *iptr = Device->Framebuffer;
@@ -97,7 +97,7 @@ static void SetContrast( struct GDS_Device* Device, uint8_t Contrast ) {
 
 static bool Init( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER	
-	struct SSD1306_Private *Private = (struct SSD1306_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 #ifdef USE_IRAM
 	if (Device->IF == GDS_IF_SPI) Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 	else 
