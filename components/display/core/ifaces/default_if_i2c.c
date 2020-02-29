@@ -73,7 +73,7 @@ bool GDS_I2CAttachDevice( struct GDS_Device* Device, int Width, int Height, int 
     Device->WriteData = I2CDefaultWriteData;
     Device->Address = I2CAddress;
     Device->RSTPin = RSTPin;
-	Device->IF = IF_I2C;
+	Device->IF = GDS_IF_I2C;
 	Device->Width = Width;
 	Device->Height = Height;
 	
@@ -83,7 +83,7 @@ bool GDS_I2CAttachDevice( struct GDS_Device* Device, int Width, int Height, int 
 		GDS_Reset( Device );
     }
 	
-    return Device->Init( Device );
+    return GDS_Init( Device );
 }
 
 static bool I2CDefaultWriteBytes( int Address, bool IsCommand, const uint8_t* Data, size_t DataLength ) {

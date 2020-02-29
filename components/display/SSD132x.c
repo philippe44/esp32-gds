@@ -26,7 +26,7 @@ static char TAG[] = "SSD132x";
 
 enum { SSD1326, SSD1327 };
 
-struct SSD132x_Private {
+struct PrivateSpace {
 	uint8_t *iRAM, *Shadowbuffer;
 	uint8_t ReMap, PageSize;
 	uint8_t Model;
@@ -67,7 +67,7 @@ static void SetRowAddress( struct GDS_Device* Device, uint8_t Start, uint8_t End
 }
 
 static void Update4( struct GDS_Device* Device ) {
-	struct SSD132x_Private *Private = (struct SSD132x_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 		
 	// always update by full lines
 	SetColumnAddress( Device, 0, Device->Width / 2 - 1);
@@ -122,7 +122,7 @@ static void Update4( struct GDS_Device* Device ) {
 */ 
 static void Update1( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER
-	struct SSD132x_Private *Private = (struct SSD132x_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	// not sure the compiler does not have to redo all calculation in for loops, so local it is
 	int width = Device->Width / 8, rows = Device->Height;
 	uint8_t *optr = Private->Shadowbuffer, *iptr = Device->Framebuffer;
@@ -198,7 +198,7 @@ static void DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, i
 }
 
 static void SetHFlip( struct GDS_Device* Device, bool On ) { 
-	struct SSD132x_Private *Private = (struct SSD132x_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	if (Private->Model == SSD1326) Private->ReMap = On ? (Private->ReMap | ((1 << 0) | (1 << 2))) : (Private->ReMap & ~((1 << 0) | (1 << 2)));
 	else Private->ReMap = On ? (Private->ReMap | ((1 << 0) | (1 << 1))) : (Private->ReMap & ~((1 << 0) | (1 << 1)));
 	Device->WriteCommand( Device, 0xA0 );
@@ -206,7 +206,7 @@ static void SetHFlip( struct GDS_Device* Device, bool On ) {
 }	
 
 static void SetVFlip( struct GDS_Device *Device, bool On ) { 
-	struct SSD132x_Private *Private = (struct SSD132x_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	if (Private->Model == SSD1326) Private->ReMap = On ? (Private->ReMap | (1 << 1)) : (Private->ReMap & ~(1 << 1));
 	else Private->ReMap = On ? (Private->ReMap | (1 << 4)) : (Private->ReMap & ~(1 << 4));
 	Device->WriteCommand( Device, 0xA0 );
@@ -222,26 +222,15 @@ static void SetContrast( struct GDS_Device* Device, uint8_t Contrast ) {
 }
 
 static bool Init( struct GDS_Device* Device ) {
-	struct SSD132x_Private *Private = (struct SSD132x_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	
 	// find a page size that is not too small is an integer of height
 	Private->PageSize = min(8, PAGE_BLOCK / (Device->Width / 2));
 	Private->PageSize = Device->Height / (Device->Height / Private->PageSize) ;	
 	
-#ifdef USE_IRAM	
-	// let SPI driver allocate memory, it has not proven to be more efficient
-	if (Device->IF == IF_SPI) Private->iRAM = heap_caps_malloc( Private->PageSize * Device->Width / 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
-#endif	
-	Device->FramebufferSize = ( Device->Width * Device->Height ) / 2;	
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
-    NullCheck( Device->Framebuffer, return false );
-	
-// benchmarks showed little gain to have SPI memory already in IRAM vs letting driver copy		
 #ifdef SHADOW_BUFFER	
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
-    NullCheck( Device->Framebuffer, return false );
 #ifdef USE_IRAM
-	if (Device->IF == IF_SPI) {
+	if (Device->IF == GDS_IF_SPI) {
 		if (Device->Depth == 1) {
 			Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 		} else {
@@ -252,19 +241,12 @@ static bool Init( struct GDS_Device* Device ) {
 #endif
 	Private->Shadowbuffer = malloc( Device->FramebufferSize );	
 	memset(Private->Shadowbuffer, 0xFF, Device->FramebufferSize);
-#else	// not SHADOW_BUFFER
-#ifdef USE_IRAM
-	if (Device->IF == IF_SPI) {
-		if (Device->Depth == 1) {
-			Device->Framebuffer = heap_caps_calloc( 1, Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
-		} else  {
-			Device->Framebuffer = calloc( 1, Device->FramebufferSize );	
-			Private->iRAM = heap_caps_malloc( Private->PageSize * Device->Width / 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
-		}
-	} else 
+#else
+#ifdef USE_IRAM	
+	if (Device->Depth == 4 && Device->IF == GDS_IF_SPI) Private->iRAM = heap_caps_malloc( Private->PageSize * Device->Width / 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 #endif	
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
-#endif	
+
+#endif
 
 	ESP_LOGI(TAG, "SSD1326/7 with bit depth %u, page %u, iRAM %p", Device->Depth, Private->PageSize, Private->iRAM);
 			
@@ -324,7 +306,7 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	
 	*Device = SSD132x;	
-	((struct SSD132x_Private*) Device->Private)->Model = Model;
+	((struct PrivateSpace*) Device->Private)->Model = Model;
 	
 	sscanf(Driver, "%*[^:]:%c", &Device->Depth);
 	
@@ -333,6 +315,9 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 		Device->DrawPixelFast = DrawPixel1Fast;
 		Device->DrawBitmapCBR = DrawBitmapCBR;
 		Device->ClearWindow = ClearWindow;
+#if !defined SHADOW_BUFFER && defined USE_IRAM	
+		Device->Alloc = GDS_ALLOC_IRAM_SPI;
+#endif	
 	} else {
 		Device->Depth = 4;
 	}	

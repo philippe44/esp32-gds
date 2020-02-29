@@ -7,6 +7,9 @@
 #include "gds.h"
 #include "gds_err.h"
 
+#define GDS_ALLOC_IRAM		0x01
+#define GDS_ALLOC_IRAM_SPI	0x02
+
 #define GDS_CLIPDEBUG_NONE 0
 #define GDS_CLIPDEBUG_WARNING 1
 #define GDS_CLIPDEBUG_ERROR 2
@@ -55,8 +58,8 @@ typedef bool ( *WriteDataProc ) ( struct GDS_Device* Device, const uint8_t* Data
 struct spi_device_t;
 typedef struct spi_device_t* spi_device_handle_t;
 
-#define IF_SPI	0
-#define IF_I2C	1
+#define GDS_IF_SPI	0
+#define GDS_IF_I2C	1
 
 struct GDS_Device {
 	uint8_t IF;
@@ -82,7 +85,8 @@ struct GDS_Device {
 	uint16_t Width;
     uint16_t Height;
 	uint8_t Depth;
-		
+	
+	uint8_t	Alloc;	
 	uint8_t* Framebuffer;
     uint16_t FramebufferSize;
 	bool Dirty;
@@ -117,6 +121,7 @@ struct GDS_Device {
 };
 
 bool GDS_Reset( struct GDS_Device* Device );
+bool GDS_Init( struct GDS_Device* Device );
 
 inline bool IsPixelVisible( struct GDS_Device* Device, int x, int y )  {
     bool Result = (
@@ -152,7 +157,7 @@ inline void IRAM_ATTR GDS_DrawPixel1Fast( struct GDS_Device* Device, int X, int 
     if ( Color == GDS_COLOR_XOR ) {
         *FBOffset ^= BIT( YBit );
     } else {
-        *FBOffset = ( Color == GDS_COLOR_WHITE ) ? *FBOffset | BIT( YBit ) : *FBOffset & ~BIT( YBit );
+        *FBOffset = ( Color >= GDS_COLOR_WHITE / 2 ) ? *FBOffset | BIT( YBit ) : *FBOffset & ~BIT( YBit );
     }
 }
 

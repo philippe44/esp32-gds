@@ -21,7 +21,7 @@
 
 static char TAG[] = "SH1106";
 
-struct SH1106_Private {
+struct PrivateSpace {
 	uint8_t *Shadowbuffer;
 };
 
@@ -40,7 +40,7 @@ static void SetPageAddress( struct GDS_Device* Device, uint8_t Start, uint8_t En
 
 static void Update( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER
-	struct SH1106_Private *Private = (struct SH1106_Private*) Device->Private;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	// not sure the compiler does not have to redo all calculation in for loops, so local it is
 	int width = Device->Width, rows = Device->Height / 8;
 	uint8_t *optr = Private->Shadowbuffer, *iptr = Device->Framebuffer;
@@ -84,27 +84,15 @@ static void SetContrast( struct GDS_Device* Device, uint8_t Contrast ) {
 }
 
 static bool Init( struct GDS_Device* Device ) {
-	Device->FramebufferSize = ( Device->Width * Device->Height ) / 8;	
-	
-// benchmarks showed little gain to have SPI memory already in IRAL vs letting driver copy		
 #ifdef SHADOW_BUFFER	
-	struct SH1106_Private *Private = (struct SH1106_Private*) Device->Private;
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
-    NullCheck( Device->Framebuffer, return false );
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 #ifdef USE_IRAM
-	if (Device->IF == IF_SPI) Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
+	if (Device->IF == GDS_IF_SPI) Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 	else 
 #endif
 	Private->Shadowbuffer = malloc( Device->FramebufferSize );	
 	NullCheck( Private->Shadowbuffer, return false );
 	memset(Private->Shadowbuffer, 0xFF, Device->FramebufferSize);
-#else	// not SHADOW_BUFFER
-#ifdef USE_IRAM
-	// benchmarks showed little gain to have SPI memory already in IRAL vs letting driver copy
-	if (Device->IF == IF_SPI) Device->Framebuffer = heap_caps_calloc( 1, Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
-	else 
-#endif
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
 #endif	
 		
 	// need to be off and disable display RAM
@@ -149,8 +137,6 @@ static const struct GDS_Device SH1106 = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
 	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
 	.Update = Update, .Init = Init,
-	//.DrawPixelFast = GDS_DrawPixelFast,
-	//.ClearWindow = ClearWindow,
 };	
 
 struct GDS_Device* SH1106_Detect(char *Driver, struct GDS_Device* Device) {
@@ -159,6 +145,9 @@ struct GDS_Device* SH1106_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	*Device = SH1106;	
 	Device->Depth = 1;
+#if !defined SHADOW_BUFFER && defined USE_IRAM	
+	Device->Alloc = GDS_ALLOC_IRAM_SPI;
+#endif	
 	ESP_LOGI(TAG, "SH1106 driver");
 	
 	return Device;

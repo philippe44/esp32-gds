@@ -58,7 +58,7 @@ bool GDS_SPIAttachDevice( struct GDS_Device* Device, int Width, int Height, int 
     Device->SPIHandle = SPIDevice;
     Device->RSTPin = RSTPin;
     Device->CSPin = CSPin;
-	Device->IF = IF_SPI;
+	Device->IF = GDS_IF_SPI;
 	Device->Width = Width;
 	Device->Height = Height;
 	
@@ -68,7 +68,7 @@ bool GDS_SPIAttachDevice( struct GDS_Device* Device, int Width, int Height, int 
 		GDS_Reset( Device );
     }
 	
-	return Device->Init( Device );
+	return GDS_Init( Device );
 }
 
 static bool SPIDefaultWriteBytes( spi_device_handle_t SPIHandle, int WriteMode, const uint8_t* Data, size_t DataLength ) {

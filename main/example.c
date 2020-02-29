@@ -23,7 +23,7 @@
 #include "gds_font.h"
 #include "gds_image.h"
 
-#define I2C_MODE
+//#define I2C_MODE
 
 #define I2C_ADDRESS	0x3C
 

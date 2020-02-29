@@ -96,27 +96,15 @@ static void SetContrast( struct GDS_Device* Device, uint8_t Contrast ) {
 }
 
 static bool Init( struct GDS_Device* Device ) {
-	Device->FramebufferSize = ( Device->Width * Device->Height ) / 8;	
-	
-	// benchmarks showed little gain to have SPI memory already in IRAL vs letting driver copy		
 #ifdef SHADOW_BUFFER	
 	struct SSD1306_Private *Private = (struct SSD1306_Private*) Device->Private;
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
-    NullCheck( Device->Framebuffer, return false );
 #ifdef USE_IRAM
-	if (Device->IF == IF_SPI) Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
+	if (Device->IF == GDS_IF_SPI) Private->Shadowbuffer = heap_caps_malloc( Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 	else 
 #endif
 	Private->Shadowbuffer = malloc( Device->FramebufferSize );	
 	NullCheck( Private->Shadowbuffer, return false );
 	memset(Private->Shadowbuffer, 0xFF, Device->FramebufferSize);
-#else	// not SHADOW_BUFFER
-#ifdef USE_IRAM
-	// benchmarks showed little gain to have SPI memory already in IRAL vs letting driver copy
-	if (Device->IF == IF_SPI) Device->Framebuffer = heap_caps_calloc( 1, Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
-	else 
-#endif
-	Device->Framebuffer = calloc( 1, Device->FramebufferSize );
 #endif	
 		
 	// need to be off and disable display RAM
@@ -164,8 +152,6 @@ static const struct GDS_Device SSD1306 = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
 	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
 	.Update = Update, .Init = Init,
-	//.DrawPixelFast = GDS_DrawPixelFast,
-	//.ClearWindow = ClearWindow,
 };	
 
 struct GDS_Device* SSD1306_Detect(char *Driver, struct GDS_Device* Device) {
@@ -174,6 +160,9 @@ struct GDS_Device* SSD1306_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	*Device = SSD1306;	
 	Device->Depth = 1;
+#if !defined SHADOW_BUFFER && defined USE_IRAM	
+	Device->Alloc = GDS_ALLOC_IRAM_SPI;
+#endif	
 	ESP_LOGI(TAG, "SSD1306 driver");
 	
 	return Device;
