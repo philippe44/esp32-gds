@@ -99,12 +99,13 @@ struct GDS_Device {
 	// various driver-specific method
 	// must always provide 
 	bool (*Init)( struct GDS_Device* Device);
+	void (*Update)( struct GDS_Device* Device );
+	// may provide if supported
 	void (*SetContrast)( struct GDS_Device* Device, uint8_t Contrast );
 	void (*DisplayOn)( struct GDS_Device* Device );
 	void (*DisplayOff)( struct GDS_Device* Device );
 	void (*SetHFlip)( struct GDS_Device* Device, bool On );
 	void (*SetVFlip)( struct GDS_Device* Device, bool On );
-	void (*Update)( struct GDS_Device* Device );
 	// must provide for depth other than 1 (vertical) and 4 (may provide for optimization)
 	void (*DrawPixelFast)( struct GDS_Device* Device, int X, int Y, int Color );
 	void (*DrawBitmapCBR)(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color );

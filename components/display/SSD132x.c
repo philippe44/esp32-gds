@@ -299,8 +299,8 @@ static const struct GDS_Device SSD132x = {
 struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	uint8_t Model;
 	
-	if (!strcasestr(Driver, "SSD1326")) Model = SSD1326;
-	else if (!strcasestr(Driver, "SSD1327")) Model = SSD1327;
+	if (strcasestr(Driver, "SSD1326")) Model = SSD1326;
+	else if (strcasestr(Driver, "SSD1327")) Model = SSD1327;
 	else return NULL;
 	
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));

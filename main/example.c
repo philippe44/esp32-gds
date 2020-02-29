@@ -138,6 +138,11 @@ void app_main()
 	
 	init_display("SPI,driver=SSD1327,width=128,height=128,cs=18,speed=16000000,rst=25", "Hello SPI");
 #endif
+
+	if (!display) {
+		ESP_LOGE(TAG, "No driver found, stopping ...");
+		vTaskSuspend(NULL);
+	}
 			
 	#define NB_BARS	10
 	struct {
