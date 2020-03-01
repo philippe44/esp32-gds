@@ -136,7 +136,7 @@ void app_main()
 	
 	spi_bus_initialize( spi_system_host, &BusConfig, 1 );
 	
-	init_display("SPI,driver=SSD1327,width=128,height=128,cs=18,speed=16000000,rst=25", "Hello SPI");
+	init_display("SPI,driver=SSD1327,width=128,height=128,cs=18,speed=16000000,reset=25", "Hello SPI");
 	// init_display("SPI,driver=SSD1675:ready=26,width=250,height=122,cs=18,speed=1000000,reset=25", "Hello SPI");
 #endif
 
