@@ -143,7 +143,7 @@ struct GDS_Device* SH1106_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!strcasestr(Driver, "SH1106")) return NULL;
 	
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
-	*Device = SH1106;	
+	*Device = SH1106;
 	Device->Depth = 1;
 #if !defined SHADOW_BUFFER && defined USE_IRAM	
 	Device->Alloc = GDS_ALLOC_IRAM_SPI;

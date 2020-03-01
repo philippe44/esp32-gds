@@ -41,8 +41,8 @@ int spi_system_host = SPI2_HOST;
 int spi_system_dc_gpio = 5;
 
 struct GDS_Device *display;
-extern GDS_DetectFunc SSD1306_Detect, SSD132x_Detect, SH1106_Detect;
-GDS_DetectFunc* drivers[] = { SH1106_Detect, SSD1306_Detect, SSD132x_Detect, NULL };
+extern GDS_DetectFunc SSD1306_Detect, SSD132x_Detect, SH1106_Detect, SSD1675_Detect;
+GDS_DetectFunc* drivers[] = { SH1106_Detect, SSD1306_Detect, SSD132x_Detect, SSD1675_Detect, NULL };
 
 bool init_display (char *config, char *welcome) {
 	int width = -1, height = -1;
@@ -137,6 +137,7 @@ void app_main()
 	spi_bus_initialize( spi_system_host, &BusConfig, 1 );
 	
 	init_display("SPI,driver=SSD1327,width=128,height=128,cs=18,speed=16000000,rst=25", "Hello SPI");
+	// init_display("SPI,driver=SSD1675:ready=26,width=250,height=122,cs=18,speed=1000000,reset=25", "Hello SPI");
 #endif
 
 	if (!display) {

@@ -42,12 +42,12 @@ static void Update( struct GDS_Device* Device ) {
 #ifdef SHADOW_BUFFER
 	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
 	// not sure the compiler does not have to redo all calculation in for loops, so local it is
-	int width = Device->Width, rows = Device->Height / 8;
+	int width = Device->Width, pages = Device->Height / 8;
 	uint8_t *optr = Private->Shadowbuffer, *iptr = Device->Framebuffer;
-	int CurrentRow = -1, FirstCol = -1, LastCol = -1;
+	int CurrentPage = -1, FirstCol = -1, LastCol = -1;
 	
 	// by row, find first and last columns that have been updated
-	for (int r = 0; r < rows; r++) {
+	for (int p = 0; p < pages; p++) {
 		uint8_t first = 0, last;	
 		for (int c = 0; c < width; c++) {
 			if (*iptr != *optr) {
@@ -70,15 +70,15 @@ static void Update( struct GDS_Device* Device ) {
 			}
 			
 			// Set row only when needed, otherwise let auto-increment work
-			if (r != CurrentRow) SetPageAddress( Device, r, Device->Height / 8 - 1 );
-			CurrentRow = r + 1;
+			if (p != CurrentPage) SetPageAddress( Device, p, Device->Height / 8 - 1 );
+			CurrentPage = p + 1;
 			
 			// actual write
-			Device->WriteData( Device, Private->Shadowbuffer + r*width + first, last - first + 1);
+			Device->WriteData( Device, Private->Shadowbuffer + p*width + first, last - first + 1);
 		}
 	}	
 #else	
-	// automatic counter and end Page/Column
+	// automatic counter and end Page/Column (we assume Height % 8 == 0)
 	SetColumnAddress( Device, 0, Device->Width - 1);
 	SetPageAddress( Device, 0, Device->Height / 8 - 1);
 	Device->WriteData( Device, Device->Framebuffer, Device->FramebufferSize );

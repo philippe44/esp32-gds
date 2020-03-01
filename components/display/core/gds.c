@@ -133,11 +133,18 @@ bool GDS_Reset( struct GDS_Device* Device ) {
 }
 
 bool GDS_Init( struct GDS_Device* Device ) {
-	Device->FramebufferSize = ( Device->Width * Device->Height ) / (8  / Device->Depth);
 	
-	if ((Device->Alloc && GDS_ALLOC_IRAM) || ((Device->Alloc & GDS_ALLOC_IRAM_SPI) && Device->IF == GDS_IF_SPI)) heap_caps_calloc( 1, Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
-	else Device->Framebuffer = calloc( 1, Device->FramebufferSize );
-	NullCheck( Device->Framebuffer, return false );
+	Device->FramebufferSize = (Device->Width * Device->Height) / (8 / Device->Depth);
+	
+	// allocate FB unless explicitely asked not to
+	if (!(Device->Alloc & GDS_ALLOC_NONE)) {
+		if ((Device->Alloc & GDS_ALLOC_IRAM) || ((Device->Alloc & GDS_ALLOC_IRAM_SPI) && Device->IF == GDS_IF_SPI)) {
+			heap_caps_calloc( 1, Device->FramebufferSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
+		} else {
+			Device->Framebuffer = calloc( 1, Device->FramebufferSize );
+		}	
+		NullCheck( Device->Framebuffer, return false );
+	}	
 	
 	bool Res = Device->Init( Device );
 	if (!Res) free(Device->Framebuffer);

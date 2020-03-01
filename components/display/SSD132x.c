@@ -162,7 +162,7 @@ static void IRAM_ATTR DrawPixel1Fast( struct GDS_Device* Device, int X, int Y, i
         *FBOffset ^= BIT( 7 - XBit );
     } else {
 		// we might be able to save the 7-Xbit using BitRemap (A0 bit 2)
-        *FBOffset = ( Color == GDS_COLOR_WHITE ) ? *FBOffset | BIT( 7 - XBit ) : *FBOffset & ~BIT( 7 - XBit );
+        *FBOffset = ( Color == GDS_COLOR_BLACK ) ?  *FBOffset & ~BIT( 7 - XBit ) : *FBOffset | BIT( 7 - XBit );
     }
 }
 
@@ -181,8 +181,6 @@ static void ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int 
 		c += chunk * 8;
 		while (c <= x2) DrawPixel1Fast( Device, c++, r, Color );
 	}
-	
-	Device->Dirty = true;
 }
 
 static void DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color ) {
@@ -193,8 +191,6 @@ static void DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, i
 	
 	// just do bitreverse and if BitRemap works, there will be even nothing to do	
 	for (int i = Height * Width >> 3; --i >= 0;) *optr++ = BitReverseTable256[*Data++];
-	
-	// Dirty is set for us
 }
 
 static void SetHFlip( struct GDS_Device* Device, bool On ) { 
@@ -307,7 +303,7 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	
 	*Device = SSD132x;	
 	((struct PrivateSpace*) Device->Private)->Model = Model;
-	
+		
 	sscanf(Driver, "%*[^:]:%c", &Device->Depth);
 	
 	if (Model == SSD1326 && Device->Depth == 1) {
