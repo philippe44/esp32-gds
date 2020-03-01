@@ -67,8 +67,9 @@ void WaitReady( struct GDS_Device* Device) {
 			vTaskDelay( pdMS_TO_TICKS(100) );
 			count -= 100;
 		}	
+	} else {
+		vTaskDelay( pdMS_TO_TICKS(2000) );
 	}	
-	else vTaskDelay( pdMS_TO_TICKS(2000) );
 }	
 
 static void WriteByte( struct GDS_Device* Device, uint8_t Data ) {
