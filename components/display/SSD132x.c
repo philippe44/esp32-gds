@@ -168,9 +168,9 @@ static void IRAM_ATTR DrawPixel1Fast( struct GDS_Device* Device, int X, int Y, i
 
 static void ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color ) {
 	uint8_t _Color = Color == GDS_COLOR_BLACK ? 0: 0xff;
-	uint8_t Width = Device->Width >> 3;
+	int Width = Device->Width >> 3;
 	uint8_t *optr = Device->Framebuffer;
-
+	
 	for (int r = y1; r <= y2; r++) {
 		int c = x1;
 		// for a row that is not on a boundary, not column opt can be done, so handle all columns on that line
@@ -294,6 +294,7 @@ static const struct GDS_Device SSD132x = {
 
 struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	uint8_t Model;
+	int Depth;
 	
 	if (strcasestr(Driver, "SSD1326")) Model = SSD1326;
 	else if (strcasestr(Driver, "SSD1327")) Model = SSD1327;
@@ -304,7 +305,8 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	*Device = SSD132x;	
 	((struct PrivateSpace*) Device->Private)->Model = Model;
 		
-	sscanf(Driver, "%*[^:]:%c", &Device->Depth);
+	sscanf(Driver, "%*[^:]:%u", &Depth);
+	Device->Depth = Depth;
 	
 	if (Model == SSD1326 && Device->Depth == 1) {
 		Device->Update = Update1;

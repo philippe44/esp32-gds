@@ -95,7 +95,7 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 			memset( Device->Framebuffer, Color | (Color << 4), Device->FramebufferSize );
 		} else {
 			uint8_t _Color = Color | (Color << 4);
-			uint8_t Width = Device->Width;
+			int Width = Device->Width;
 			uint8_t *optr = Device->Framebuffer;
 			// try to do byte processing as much as possible
 			for (int r = y1; r <= y2; r++) {
@@ -113,7 +113,7 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 			}
 		}
 	}
-
+	
 	// make sure diplay will do update
 	Device->Dirty = true;
 }
