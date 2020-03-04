@@ -195,11 +195,11 @@ void GDS_DrawBox( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int
 void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color ) {
 	if (!Height) Height = Device->Height;
 	if (!Width) Width = Device->Width;
-	Height >>= 3;
 		
 	if (Device->DrawBitmapCBR) {
 		Device->DrawBitmapCBR( Device, Data, Width, Height, Color );
 	} else if (Device->Depth == 1) {
+		Height >>= 3;
 		// need to do row/col swap and bit-reverse
 		for (int r = 0; r < Height; r++) {
 			uint8_t *optr = Device->Framebuffer + r*Device->Width, *iptr = Data + r;
@@ -211,6 +211,7 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 	} else if (Device->Depth == 4)	{
 		uint8_t *optr = Device->Framebuffer;
 		int LineLen = Device->Width >> 1;
+		Height >>= 3;
 		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
 			uint8_t Byte = BitReverseTable256[*Data++];
 			// we need to linearize code to let compiler better optimize
@@ -237,6 +238,7 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 			if (++r == Height) { c++; r = 0; optr = Device->Framebuffer + (c >> 1); }		
 		}
 	} else {
+		Height >>= 3;
 		// don't know bitdepth, use brute-force solution
 		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
 			uint8_t Byte = *Data++;
