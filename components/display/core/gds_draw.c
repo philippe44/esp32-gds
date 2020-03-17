@@ -212,6 +212,7 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 		uint8_t *optr = Device->Framebuffer;
 		int LineLen = Device->Width >> 1;
 		Height >>= 3;
+		Color &= 0x0f;
 		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
 			uint8_t Byte = BitReverseTable256[*Data++];
 			// we need to linearize code to let compiler better optimize
@@ -223,7 +224,7 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 				*optr = (*optr & 0x0f) | (((Byte & 0x01)*Color)<<4); optr += LineLen; Byte >>= 1;
 				*optr = (*optr & 0x0f) | (((Byte & 0x01)*Color)<<4); optr += LineLen; Byte >>= 1;
 				*optr = (*optr & 0x0f) | (((Byte & 0x01)*Color)<<4); optr += LineLen; Byte >>= 1;
-				*optr = (*optr & 0x0f) | (((Byte & 0x01)*Color)<<4); optr += LineLen; Byte >>= 1;
+				*optr = (*optr & 0x0f) | (((Byte & 0x01)*Color)<<4); optr += LineLen; 
 			} else {
 				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen; Byte >>= 1;
 				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen; Byte >>= 1;
@@ -232,7 +233,7 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen; Byte >>= 1;
 				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen; Byte >>= 1;
 				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen; Byte >>= 1;
-				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen; Byte >>= 1;
+				*optr = (*optr & 0xf0) | (((Byte & 0x01)*Color)); optr += LineLen;
 			}	
 			// end of a column, move to next one
 			if (++r == Height) { c++; r = 0; optr = Device->Framebuffer + (c >> 1); }		

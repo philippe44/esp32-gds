@@ -167,7 +167,7 @@ inline void IRAM_ATTR GDS_DrawPixel4Fast( struct GDS_Device* Device, int X, int 
 	uint8_t* FBOffset;
 
     FBOffset = Device->Framebuffer + ( (Y * Device->Width >> 1) + (X >> 1));
-	*FBOffset = X & 0x01 ? (*FBOffset & 0x0f) | ((Color  & 0x0f) << 4) : ((*FBOffset & 0xf0) | (Color & 0x0f));
+	*FBOffset = X & 0x01 ? (*FBOffset & 0x0f) | ((Color & 0x0f) << 4) : ((*FBOffset & 0xf0) | (Color & 0x0f));
 }
 
 inline void IRAM_ATTR GDS_DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color ) {
