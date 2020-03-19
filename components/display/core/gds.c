@@ -60,6 +60,10 @@ void GDS_Clear( struct GDS_Device* Device, int Color ) {
 }
 
 void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color ) {
+	// -1 means up to width/height
+	if (x2 < 0) x2 = Device->Width - 1;
+	if (y2 < 0) y2 = Device->Height - 1;
+	
 	// driver can provide own optimized clear window
 	if (Device->ClearWindow) {
 		Device->ClearWindow( Device, x1, y1, x2, y2, Color );
