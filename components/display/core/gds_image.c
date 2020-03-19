@@ -218,8 +218,10 @@ bool GDS_DrawJPEG( struct GDS_Device* Device, uint8_t *Source, int x, int y, int
 		
 		// then place it
 		if (Fit & GDS_IMAGE_CENTER_X) Context.XOfs = (Device->Width + x - Context.Width) / 2;
+		else if (Fit & GDS_IMAGE_RIGHT) Context.XOfs = Device->Width - Context.Width;
 		if (Fit & GDS_IMAGE_CENTER_Y) Context.YOfs = (Device->Height + y - Context.Height) / 2;
-		
+		else if (Fit & GDS_IMAGE_BOTTOM) Context.YOfs = Device->Height - Context.Height;
+
 		Context.XMin = x - Context.XOfs;
 		Context.YMin = y - Context.YOfs;
 					
