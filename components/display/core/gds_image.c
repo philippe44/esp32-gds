@@ -133,45 +133,118 @@ void GDS_GetJPEGSize(uint8_t *Source, int *Width, int *Height) {
 }	
 
 /****************************************************************************************
- * Simply draw a RGB565 image
- * monoschrome (0.2125 * color.r) + (0.7154 * color.g) + (0.0721 * color.b)
+ * Simply draw a RGB 16bits image
+ * monochrome (0.2125 * color.r) + (0.7154 * color.g) + (0.0721 * color.b)
  * grayscale (0.3 * R) + (0.59 * G) + (0.11 * B) )
  */
 void GDS_DrawRGB16( struct GDS_Device* Device, uint16_t *Image, int x, int y, int Width, int Height, int RGB_Mode ) {
 	if (Device->DrawRGB16) {
-		Device->DrawRGB16( Device, x, y, Width, Height, RGB_Mode, Image );
+		Device->DrawRGB16( Device, Image, x, y, Width, Height, RGB_Mode );
 	} else {
-		int Scale = Device->Depth < 5 ? 5 - Device->Depth : 0;
 		switch(RGB_Mode) {
 		case GDS_RGB565:
-			for (int c = 0; c < Width; c++) {
+			// 6 bits pixels to be placed. Use a linearized structure for a bit of optimization
+			if (Device->Depth < 6) {
+				int Scale = 6 - Device->Depth;
 				for (int r = 0; r < Height; r++) {
-					int pixel = Image[Width*r + c];
-					pixel = ((pixel & 0x1f) * 11 + ((((pixel >> 5) & 0x3f)  * 59) >> 1) + (pixel >> 11) * 30) / 100;
-					GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
+					for (int c = 0; c < Width; c++) {
+						int pixel = *Image++;
+						pixel = ((((pixel & 0x1f) * 11) << 1) + ((pixel >> 5) & 0x3f) * 59 + (((pixel >> 11) * 30) << 1) + 1) / 100;
+						GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
+					}	
+				}	
+			} else {
+				int Scale = Device->Depth - 6;
+				for (int r = 0; r < Height; r++) {
+					for (int c = 0; c < Width; c++) {
+						int pixel = *Image++;
+						pixel = ((((pixel & 0x1f) * 11) << 1) + ((pixel >> 5) & 0x3f) * 59 + (((pixel >> 11) * 30) << 1) + 1) / 100;
+						GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
+					}	
 				}	
 			}	
 			break;
 		case GDS_RGB555:
-			for (int c = 0; c < Width; c++) {
+			// 5 bits pixels to be placed Use a linearized structure for a bit of optimization
+			if (Device->Depth < 5) {
+				int Scale = 5 - Device->Depth;
 				for (int r = 0; r < Height; r++) {
-					int pixel = Image[Width*r + c];
-					pixel = ((pixel & 0x1f) * 11 + ((pixel >> 5) & 0x1f)  * 59 + (pixel >> 10) * 30) / 100;
-					GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
+					for (int c = 0; c < Width; c++) {
+						int pixel = *Image++;
+						pixel = ((pixel & 0x1f) * 11 + ((pixel >> 5) & 0x1f) * 59 + (pixel >> 10) * 30) / 100;
+						GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
+					}	
 				}	
+			} else {
+				int Scale = Device->Depth - 5;
+				for (int r = 0; r < Height; r++) {
+					for (int c = 0; c < Width; c++) {
+						int pixel = *Image++;
+						pixel = ((pixel & 0x1f) * 11 + ((pixel >> 5) & 0x1f) * 59 + (pixel >> 10) * 30) / 100;
+						GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
+					}	
+				}		
 			}	
 			break;
 		case GDS_RGB444:
-			for (int c = 0; c < Width; c++) {
+			// 4 bits pixels to be placed 
+			if (Device->Depth < 4) {
+				int Scale = 4 - Device->Depth;
 				for (int r = 0; r < Height; r++) {
-					int pixel = Image[Width*r + c];
-					pixel = (pixel & 0x0f) * 11 + ((pixel >> 4) & 0x0f)  * 59 + (pixel >> 8) * 30;
-					GDS_DrawPixel( Device, c + x, r + y, pixel >> (Scale - 1));
+					for (int c = 0; c < Width; c++) {
+						int pixel = *Image++;
+						pixel = (pixel & 0x0f) * 11 + ((pixel >> 4) & 0x0f) * 59 + (pixel >> 8) * 30;
+						GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
+					}	
+				}	
+			} else {
+				int Scale = Device->Depth - 4;
+				for (int r = 0; r < Height; r++) {
+					for (int c = 0; c < Width; c++) {
+						int pixel = *Image++;
+						pixel = (pixel & 0x0f) * 11 + ((pixel >> 4) & 0x0f) * 59 + (pixel >> 8) * 30;
+						GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
+					}	
 				}	
 			}	
 			break;				
 		}
-	}	 
+	}	
+	
+	Device->Dirty = true;	
+}
+
+/****************************************************************************************
+ * Simply draw a RGB 8 bits  image (R:3,G:3,B:2)
+ * monochrome (0.2125 * color.r) + (0.7154 * color.g) + (0.0721 * color.b)
+ * grayscale (0.3 * R) + (0.59 * G) + (0.11 * B) )
+ */
+void GDS_DrawRGB8( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height ) {
+	if (Device->DrawRGB8) {
+		Device->DrawRGB8( Device, Image, x, y, Width, Height );
+	} else if (Device->Depth < 3) {
+		// 3 bits pixels to be placed 
+		int Scale = 3 - Device->Depth;
+		for (int r = 0; r < Height; r++) {
+			for (int c = 0; c < Width; c++) {
+				int pixel = *Image++;
+				pixel = ((((pixel & 0x3) * 11) << 1) + ((pixel >> 2) & 0x7) * 59 + (pixel >> 5) * 30 + 1) / 100;
+				GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
+			}	
+		}	
+	} else {	
+		// 3 bits pixels to be placed 
+		int Scale = Device->Depth  - 3;
+		for (int r = 0; r < Height; r++) {
+			for (int c = 0; c < Width; c++) {
+				int pixel = *Image++;
+				pixel = ((((pixel & 0x3) * 11) << 1) + ((pixel >> 2) & 0x7) * 59 + (pixel >> 5) * 30 + 1) / 100;
+				GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
+			}	
+		}	
+	}
+	
+	Device->Dirty = true;		
 }	
 
 //Decode the embedded image into pixel lines that can be used with the rest of the logic.
@@ -228,6 +301,7 @@ bool GDS_DrawJPEG( struct GDS_Device* Device, uint8_t *Source, int x, int y, int
 		// do decompress & draw
 		Res = jd_decomp(&Decoder, OutHandlerDirect, N);
 		if (Res == JDR_OK) {
+			Device->Dirty = true;
 			Ret = true;
 		} else {	
 			ESP_LOGE(TAG, "Image decoder: jd_decode failed (%d)", Res);

@@ -158,7 +158,9 @@ bool GDS_Init( struct GDS_Device* Device ) {
 void GDS_SetContrast( struct GDS_Device* Device, uint8_t Contrast ) { if (Device->SetContrast) Device->SetContrast( Device, Contrast); }
 void GDS_SetHFlip( struct GDS_Device* Device, bool On ) { if (Device->SetHFlip) Device->SetHFlip( Device, On ); }
 void GDS_SetVFlip( struct GDS_Device* Device, bool On ) { if (Device->SetVFlip) Device->SetVFlip( Device, On ); }
+void GDS_SetDirty( struct GDS_Device* Device ) { Device->Dirty = true; }
 int	GDS_GetWidth( struct GDS_Device* Device ) { return Device->Width; }
 int	GDS_GetHeight( struct GDS_Device* Device ) { return Device->Height; }
+int	GDS_GetDepth( struct GDS_Device* Device ) { return Device->Depth; }
 void GDS_DisplayOn( struct GDS_Device* Device ) { if (Device->DisplayOn) Device->DisplayOn( Device ); }
 void GDS_DisplayOff( struct GDS_Device* Device ) { if (Device->DisplayOff) Device->DisplayOff( Device ); }
