@@ -215,13 +215,21 @@ void GDS_DrawRGB16( struct GDS_Device* Device, uint16_t *Image, int x, int y, in
 }
 
 /****************************************************************************************
- * Simply draw a RGB 8 bits  image (R:3,G:3,B:2)
+ * Simply draw a RGB 8 bits  image (R:3,G:3,B:2) or plain grayscale
  * monochrome (0.2125 * color.r) + (0.7154 * color.g) + (0.0721 * color.b)
  * grayscale (0.3 * R) + (0.59 * G) + (0.11 * B) )
  */
-void GDS_DrawRGB8( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height ) {
+void GDS_DrawRGB8( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height, int RGB_Mode ) {
 	if (Device->DrawRGB8) {
-		Device->DrawRGB8( Device, Image, x, y, Width, Height );
+		Device->DrawRGB8( Device, Image, x, y, Width, Height, RGB_Mode );
+	} else if (RGB_Mode == GDS_GRAYSCALE) {
+		// 8 bits pixels
+		int Scale = 8 - Device->Depth;
+		for (int r = 0; r < Height; r++) {
+			for (int c = 0; c < Width; c++) {
+				GDS_DrawPixel( Device, c + x, r + y, *Image++ >> Scale);
+			}	
+		}	
 	} else if (Device->Depth < 3) {
 		// 3 bits pixels to be placed 
 		int Scale = 3 - Device->Depth;

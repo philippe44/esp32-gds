@@ -7,7 +7,7 @@
 
 struct GDS_Device;
 
-enum { GDS_RGB565, GDS_RGB555, GDS_RGB444 };
+enum { GDS_RGB565, GDS_RGB555, GDS_RGB444, GDS_RGB332, GDS_GRAYSCALE };
 
 // Fit options for GDS_DrawJPEG
 #define GDS_IMAGE_LEFT		0x00
@@ -24,4 +24,4 @@ uint16_t* 	GDS_DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scale)
 void	 	GDS_GetJPEGSize(uint8_t *Source, int *Width, int *Height);
 bool 		GDS_DrawJPEG( struct GDS_Device* Device, uint8_t *Source, int x, int y, int Fit);
 void 		GDS_DrawRGB16( struct GDS_Device* Device, uint16_t *Image, int x, int y, int Width, int Height, int RGB_Mode );
-void 		GDS_DrawRGB8( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height );
+void 		GDS_DrawRGB8( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height, int RGB_Mode );
