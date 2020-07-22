@@ -198,6 +198,7 @@ struct GDS_Device* SSD1322_Detect(char *Driver, struct GDS_Device* Device) {
 	
 	*Device = SSD1322;	
 	Device->Depth = 4;
+	Device->Mode = GDS_GRAYSCALE;
 		
 	return Device;
 }

@@ -13,14 +13,12 @@
  monochrome mode is not such type of screen, SH1106 and SSD1306 are
 */ 
 
-enum { 	GDS_COLOR_L0 = 0, GDS_COLOR_L1, GDS_COLOR_L2, GDS_COLOR_L3, GDS_COLOR_L4, GDS_COLOR_L5, GDS_COLOR_L6, GDS_COLOR_L7, 
-		GDS_COLOR_L8, GDS_COLOR_L9, GDS_COLOR_L10, GDS_COLOR_L11, GDS_COLOR_L12, GDS_COLOR_L13, GDS_COLOR_L14, GDS_COLOR_L15,
-		GDS_COLOR_MAX
-};
+// this is an ordered enum, do not change!
+enum { GDS_MONO = 0, GDS_GRAYSCALE, GDS_RGB332, GDS_RGB444, GDS_RGB555, GDS_RGB565, GDS_RGB666, GDS_RGB888 };
 		
 #define GDS_COLOR_BLACK (0)
 #define GDS_COLOR_WHITE (-1)
-#define GDS_COLOR_XOR 	(GDS_COLOR_MAX + 1)
+#define GDS_COLOR_XOR 	(256)
 
 struct GDS_Device;
 struct GDS_FontDef;

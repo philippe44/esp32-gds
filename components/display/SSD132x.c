@@ -342,11 +342,13 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 		Device->DrawPixelFast = DrawPixel1Fast;
 		Device->DrawBitmapCBR = DrawBitmapCBR;
 		Device->ClearWindow = ClearWindow;
+		Device->Mode = GDS_MONO;
 #if !defined SHADOW_BUFFER && defined USE_IRAM	
 		Device->Alloc = GDS_ALLOC_IRAM_SPI;
 #endif	
 	} else {
 		Device->Depth = 4;
+		Device->Mode = GDS_GRAYSCALE;
 	}	
 		
 	return Device;

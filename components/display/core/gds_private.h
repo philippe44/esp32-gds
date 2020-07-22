@@ -93,7 +93,7 @@ struct GDS_Device {
 	
 	uint16_t Width;
     uint16_t Height;
-	uint8_t Depth;
+	uint8_t Depth, Mode;
 	
 	uint8_t	Alloc;	
 	uint8_t* Framebuffer;
@@ -119,8 +119,7 @@ struct GDS_Device {
 	void (*DrawPixelFast)( struct GDS_Device* Device, int X, int Y, int Color );
 	void (*DrawBitmapCBR)(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color );
 	// may provide for optimization
-	void (*DrawRGB16)( struct GDS_Device* Device, uint16_t *Image,int x, int y, int Width, int Height, int RGB_Mode );
-	void (*DrawRGB8)( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height, int RGB_Mode );
+	void (*DrawRGB)( struct GDS_Device* Device, uint8_t *Image,int x, int y, int Width, int Height, int RGB_Mode );
 	void (*ClearWindow)( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color );
 		    
 	// interface-specific methods	
@@ -179,10 +178,22 @@ inline void IRAM_ATTR GDS_DrawPixel4Fast( struct GDS_Device* Device, int X, int 
 	*FBOffset = X & 0x01 ? (*FBOffset & 0x0f) | ((Color & 0x0f) << 4) : ((*FBOffset & 0xf0) | (Color & 0x0f));
 }
 
+inline void IRAM_ATTR GDS_DrawPixel16Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+	uint16_t* FBOffset = Device->Framebuffer + (Y * Device->Width + X);
+	*FBOffset = Color;
+}
+
+inline void IRAM_ATTR GDS_DrawPixel32Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+	uint32_t* FBOffset = Device->Framebuffer + (Y * Device->Width + X);
+	*FBOffset = Color;
+}
+
 inline void IRAM_ATTR GDS_DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color ) {
     if (Device->DrawPixelFast) Device->DrawPixelFast( Device, X, Y, Color );
 	else if (Device->Depth == 4) GDS_DrawPixel4Fast( Device, X, Y, Color);
 	else if (Device->Depth == 1) GDS_DrawPixel1Fast( Device, X, Y, Color);
+	else if (Device->Depth == 16) GDS_DrawPixel16Fast( Device, X, Y, Color);	
+	else if (Device->Depth > 16) GDS_DrawPixel32Fast( Device, X, Y, Color);	
 }	
 
 inline void IRAM_ATTR GDS_DrawPixel( struct GDS_Device* Device, int x, int y, int Color ) {

@@ -160,6 +160,7 @@ struct GDS_Device* SSD1306_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	*Device = SSD1306;	
 	Device->Depth = 1;
+	Device->Mode = GDS_MONO;
 #if !defined SHADOW_BUFFER && defined USE_IRAM	
 	Device->Alloc = GDS_ALLOC_IRAM_SPI;
 #endif	

@@ -24,8 +24,10 @@ typedef struct {
     const unsigned char *InData;	// Pointer to jpeg data
     int InPos;						// Current position in jpeg data
 	int Width, Height;	
+	uint8_t Mode;
+	int (*Scaler)(uint8_t *Pixel);
 	union {
-		uint16_t *OutData;				// Decompress
+		void *OutData;
 		struct {						// DirectDraw
 			struct GDS_Device * Device;
 			int XOfs, YOfs;
@@ -35,6 +37,46 @@ typedef struct {
 	};	
 } JpegCtx;
 
+static inline int Scaler332(uint8_t *Pixels) {
+	return (Pixels[0] & ~0x1f) | ((Pixels[1] & ~0x1f) >> 3) | (Pixels[2] >> 6);
+}
+
+static inline int Scaler444(uint8_t *Pixels) {
+	return ((Pixels[0] & ~0x0f) << 4) | (Pixels[1] & ~0x0f) | (Pixels[2] >> 4);
+}
+
+static inline int Scaler555(uint8_t *Pixels) {
+	return ((Pixels[0] & ~0x07) << 7) | ((Pixels[1] & ~0x07) << 2) | (Pixels[2] >> 3);
+}
+
+static inline int Scaler565(uint8_t *Pixels) {
+	return ((Pixels[0] & ~0x07) << 8) | ((Pixels[1] & ~0x03) << 3) | (Pixels[2] >> 3);
+}
+
+static inline int Scaler666(uint8_t *Pixels) {
+	return ((Pixels[0] & ~0x03) << 10) | ((Pixels[1] & ~0x03) << 4) | (Pixels[2] >> 2);
+}
+
+static inline int Scaler888(uint8_t *Pixels) {
+	return (Pixels[0] << 16) | (Pixels[1] << 8) | Pixels[2];
+}
+
+static inline int ScalerGray(uint8_t *Pixels) {
+	return (Pixels[0] * 14 + Pixels[1] * 76 + Pixels[2] * 38) >> 7;
+}
+
+static void *GetScaler(uint8_t Mode) {
+	switch (Mode) {
+		case GDS_RGB888: return Scaler888;
+		case GDS_RGB666: return Scaler666;
+		case GDS_RGB565: return Scaler565;
+		case GDS_RGB555: return Scaler555;
+		case GDS_RGB444: return Scaler444;
+		case GDS_RGB332: return Scaler332;			
+	}
+	return NULL;	
+}	
+
 static unsigned InHandler(JDEC *Decoder, uint8_t *Buf, unsigned Len) {
     JpegCtx *Context = (JpegCtx*) Decoder->device;
     if (Buf) memcpy(Buf, Context->InData +  Context->InPos, Len);
@@ -42,43 +84,84 @@ static unsigned InHandler(JDEC *Decoder, uint8_t *Buf, unsigned Len) {
     return Len;
 }
 
+#define OUTHANDLER(F)										\
+	for (int y = Frame->top; y <= Frame->bottom; y++) {		\
+		for (int x = Frame->left; x <= Frame->right; x++) {	\
+			OutData[Context->Width * y + x] = F(Pixels);	\
+			Pixels += 3;									\
+		}													\
+	}	
+
 static unsigned OutHandler(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
 	JpegCtx *Context = (JpegCtx*) Decoder->device;
     uint8_t *Pixels = (uint8_t*) Bitmap;
-	
-    for (int y = Frame->top; y <= Frame->bottom; y++) {
-        for (int x = Frame->left; x <= Frame->right; x++) {
-            // Convert the 888 to RGB565
-            uint16_t Value = (*Pixels++ & ~0x07) << 8;
-            Value |= (*Pixels++ & ~0x03) << 3;
-            Value |= *Pixels++ >> 3;
-            Context->OutData[Context->Width * y + x] = Value;
-        }
-    }
+
+	// decoded image is RGB888
+	if (Context->Mode == GDS_RGB888) {
+		uint32_t *OutData = (uint32_t*) Context->OutData;		
+		OUTHANDLER(Scaler888);
+	} else if (Context->Mode == GDS_RGB666) {
+		uint32_t *OutData = (uint32_t*) Context->OutData;		
+		OUTHANDLER(Scaler666);		
+	} else if (Context->Mode == GDS_RGB565) {
+		uint16_t *OutData = (uint16_t*) Context->OutData;
+		OUTHANDLER(Scaler565);		
+	} else if (Context->Mode == GDS_RGB555) {
+		uint16_t *OutData = (uint16_t*) Context->OutData;
+		OUTHANDLER(Scaler555);				
+	} else if (Context->Mode == GDS_RGB444) {
+		uint16_t *OutData = (uint16_t*) Context->OutData;
+		OUTHANDLER(Scaler444);						
+	} else if (Context->Mode == GDS_RGB332) {
+		uint8_t *OutData = (uint8_t*) Context->OutData;
+		OUTHANDLER(Scaler332);						
+	} else if (Context->Mode <= GDS_GRAYSCALE) { 	 
+		uint8_t *OutData = (uint8_t*) Context->OutData;		
+		OUTHANDLER(ScalerGray);
+	}
+    
     return 1;
 }
 
-static unsigned OutHandlerDirect(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
+static unsigned OutHandlerDirectGray(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
 	JpegCtx *Context = (JpegCtx*) Decoder->device;
     uint8_t *Pixels = (uint8_t*) Bitmap;
 	int Shift = 8 - Context->Depth;
 	
-    for (int y = Frame->top; y <= Frame->bottom; y++) {
+	for (int y = Frame->top; y <= Frame->bottom; y++) {
 		if (y < Context->YMin) continue;
-        for (int x = Frame->left; x <= Frame->right; x++) {
+		for (int x = Frame->left; x <= Frame->right; x++) {
 			if (x < Context->XMin) continue;
-            // Convert the 888 to RGB565
-            int Value = ((Pixels[0]*11 + Pixels[1]*59 + Pixels[2]*30) / 100) >> Shift;
+			// Convert the 888 to grayscale
+			int Value = ((Pixels[0]*14 + Pixels[1]*76 + Pixels[2]*38) >> 7) >> Shift;
 			Pixels += 3;
 			// used DrawPixel and not "fast" version as X,Y may be beyond screen
 			GDS_DrawPixel( Context->Device, x + Context->XOfs, y + Context->YOfs, Value);
-        }
-    }
+		}
+	}
+	
+    return 1;
+}
+
+static unsigned OutHandlerDirectColor(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
+	JpegCtx *Context = (JpegCtx*) Decoder->device;
+    uint8_t *Pixels = (uint8_t*) Bitmap;
+
+	// used DrawPixel and not "fast" version as X,Y may be beyond screen
+	for (int y = Frame->top; y <= Frame->bottom; y++) {
+		if (y < Context->YMin) continue;
+		for (int x = Frame->left; x <= Frame->right; x++) {
+			if (x < Context->XMin) continue;
+			GDS_DrawPixel( Context->Device, x + Context->XOfs, y + Context->YOfs, Context->Scaler(Pixels));
+			Pixels += 3;
+		}
+	}
+
     return 1;
 }
 
 //Decode the embedded image into pixel lines that can be used with the rest of the logic.
-static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scale, bool SizeOnly) {
+static void* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scale, bool SizeOnly, int RGB_Mode) {
     JDEC Decoder;
     JpegCtx Context;
 	char *Scratch = calloc(SCRATCH_SIZE, 1);
@@ -99,7 +182,9 @@ static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scal
 	Decoder.scale = Scale;
 
     if (Res == JDR_OK && !SizeOnly) {
-		Context.OutData = malloc(Decoder.width * Decoder.height * sizeof(uint16_t));
+		if (RGB_Mode <= GDS_RGB332) Context.OutData = malloc(Decoder.width * Decoder.height);
+		else if (RGB_Mode < GDS_RGB666) Context.OutData = malloc(Decoder.width * Decoder.height * 2);
+		else if (RGB_Mode < GDS_RGB888) Context.OutData = malloc(Decoder.width * Decoder.height * 4);
 		
 		// find the scaling factor
 		uint8_t N = 0, ScaleInt =  ceil(1.0 / Scale);
@@ -114,6 +199,7 @@ static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scal
 		if (Context.OutData) {
 			Context.Width = Decoder.width / (1 << N);
 			Context.Height = Decoder.height / (1 << N);
+			Context.Mode = RGB_Mode;
 			if (Width) *Width = Context.Width;
 			if (Height) *Height = Context.Height;
 			Res = jd_decomp(&Decoder, OutHandler, N);
@@ -121,150 +207,123 @@ static uint16_t* DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scal
 				ESP_LOGE(TAG, "Image decoder: jd_decode failed (%d)", Res);
 			}	
 		} else {
-			ESP_LOGE(TAG, "Can't allocate bitmap %dx%d", Decoder.width, Decoder.height);			
+			ESP_LOGE(TAG, "Can't allocate bitmap %dx%d or invalid mode %d", Decoder.width, Decoder.height, RGB_Mode);			
 		}	
 	} else if (!SizeOnly) {
         ESP_LOGE(TAG, "Image decoder: jd_prepare failed (%d)", Res);
     }    
-      
+
 	// free scratch area
     if (Scratch) free(Scratch);
     return Context.OutData;
 }
 
-uint16_t* GDS_DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scale) {
-	return DecodeJPEG(Source, Width, Height, Scale, false);
+void* GDS_DecodeJPEG(uint8_t *Source, int *Width, int *Height, float Scale, int RGB_Mode) {
+	return DecodeJPEG(Source, Width, Height, Scale, false, RGB_Mode);
 }	
 
 void GDS_GetJPEGSize(uint8_t *Source, int *Width, int *Height) {
-	DecodeJPEG(Source, Width, Height, 1, true);
+	DecodeJPEG(Source, Width, Height, 1, true, -1);
 }	
 
 /****************************************************************************************
- * Simply draw a RGB 16bits image
+ * RGB conversion 
  * monochrome (0.2125 * color.r) + (0.7154 * color.g) + (0.0721 * color.b)
  * grayscale (0.3 * R) + (0.59 * G) + (0.11 * B) )
  */
-void GDS_DrawRGB16( struct GDS_Device* Device, uint16_t *Image, int x, int y, int Width, int Height, int RGB_Mode ) {
-	if (Device->DrawRGB16) {
-		Device->DrawRGB16( Device, Image, x, y, Width, Height, RGB_Mode );
+ 
+inline int ToGray888(uint32_t Pixel) {
+	return (((Pixel & 0xff) * 14) + ((Pixel >> 8) & 0xff) * 76 + ((Pixel >> 16) * 38) + 1) >> 7;
+} 
+ 
+inline int ToGray666(uint32_t Pixel) {
+	return (((Pixel & 0x3f) * 14) + ((Pixel >> 6) & 0x3f) * 76 + ((Pixel >> 12) * 38) + 1) >> 7;
+}
+
+inline int ToGray565(uint16_t Pixel) {
+	return ((((Pixel & 0x1f) * 14) << 1) + ((Pixel >> 5) & 0x3f) * 76 + (((Pixel >> 11) * 38) << 1) + 1) >> 7;
+}
+
+inline int ToGray555(uint16_t Pixel) {
+	return ((Pixel & 0x1f) * 14 + ((Pixel >> 5) & 0x1f) * 76 + (Pixel >> 10) * 38) >> 7;
+}
+
+inline int ToGray444(uint16_t Pixel) {
+	return ((Pixel & 0x0f) * 14 + ((Pixel >> 4) & 0x0f) * 76 + (Pixel >> 8) * 38) >> 7;
+}
+
+inline int ToGray332(uint8_t Pixel) {
+	return ((((Pixel & 0x3) * 14) << 1) + ((Pixel >> 2) & 0x7) * 76 + (Pixel >> 5) * 38 + 1) >> 7;
+}
+
+#define TOSELF(X) (X)
+	
+#define DRAW_RGB(S,F)														\
+	if (Scale > 0) {														\
+		for (int r = 0; r < Height; r++) {									\
+			for (int c = 0; c < Width; c++) {								\
+				GDS_DrawPixel( Device, c + x, r + y, F(*S++) >> Scale);		\
+			}																\
+		}																	\
+	} else {																\
+		for (int r = 0; r < Height; r++) {									\
+			for (int c = 0; c < Width; c++) {								\
+				GDS_DrawPixel( Device, c + x, r + y, F(*S++) << -Scale);	\
+			}																\
+		}																	\
+	}								
+
+/****************************************************************************************
+ *  Decode the embedded image into pixel lines that can be used with the rest of the logic.
+ */
+void GDS_DrawRGB( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height, int RGB_Mode ) {
+	// don't do anything if driver supplies a draw function
+	if (Device->DrawRGB) {
+		Device->DrawRGB( Device, Image, x, y, Width, Height, RGB_Mode );
+		Device->Dirty = true;	
+		return;
+	}
+	
+	// set the right scaler
+	if (RGB_Mode <= GDS_GRAYSCALE) {
+		int Scale = 8 - Device->Depth;
+		DRAW_RGB(Image,TOSELF);
+	} else if (RGB_Mode == GDS_RGB332) {
+		int Scale = 3 - Device->Depth;		
+		DRAW_RGB(Image,ToGray332);
+	} else if (RGB_Mode < GDS_RGB666)	{
+		uint16_t *Source = (uint16_t*) Image;
+		
+		if (RGB_Mode == GDS_RGB565) {
+			int Scale = 6 - Device->Depth;
+			DRAW_RGB(Source,ToGray565);
+		} else if (RGB_Mode == GDS_RGB555) {
+			int Scale = 5 - Device->Depth;
+			DRAW_RGB(Source,ToGray555);
+		} else if (RGB_Mode == GDS_RGB444) {
+			int Scale = 4 - Device->Depth; 
+			DRAW_RGB(Source,ToGray444)
+		}	
+		
 	} else {
-		switch(RGB_Mode) {
-		case GDS_RGB565:
-			// 6 bits pixels to be placed. Use a linearized structure for a bit of optimization
-			if (Device->Depth < 6) {
-				int Scale = 6 - Device->Depth;
-				for (int r = 0; r < Height; r++) {
-					for (int c = 0; c < Width; c++) {
-						int pixel = *Image++;
-						pixel = ((((pixel & 0x1f) * 11) << 1) + ((pixel >> 5) & 0x3f) * 59 + (((pixel >> 11) * 30) << 1) + 1) / 100;
-						GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
-					}	
-				}	
-			} else {
-				int Scale = Device->Depth - 6;
-				for (int r = 0; r < Height; r++) {
-					for (int c = 0; c < Width; c++) {
-						int pixel = *Image++;
-						pixel = ((((pixel & 0x1f) * 11) << 1) + ((pixel >> 5) & 0x3f) * 59 + (((pixel >> 11) * 30) << 1) + 1) / 100;
-						GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
-					}	
-				}	
-			}	
-			break;
-		case GDS_RGB555:
-			// 5 bits pixels to be placed Use a linearized structure for a bit of optimization
-			if (Device->Depth < 5) {
-				int Scale = 5 - Device->Depth;
-				for (int r = 0; r < Height; r++) {
-					for (int c = 0; c < Width; c++) {
-						int pixel = *Image++;
-						pixel = ((pixel & 0x1f) * 11 + ((pixel >> 5) & 0x1f) * 59 + (pixel >> 10) * 30) / 100;
-						GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
-					}	
-				}	
-			} else {
-				int Scale = Device->Depth - 5;
-				for (int r = 0; r < Height; r++) {
-					for (int c = 0; c < Width; c++) {
-						int pixel = *Image++;
-						pixel = ((pixel & 0x1f) * 11 + ((pixel >> 5) & 0x1f) * 59 + (pixel >> 10) * 30) / 100;
-						GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
-					}	
-				}		
-			}	
-			break;
-		case GDS_RGB444:
-			// 4 bits pixels to be placed 
-			if (Device->Depth < 4) {
-				int Scale = 4 - Device->Depth;
-				for (int r = 0; r < Height; r++) {
-					for (int c = 0; c < Width; c++) {
-						int pixel = *Image++;
-						pixel = (pixel & 0x0f) * 11 + ((pixel >> 4) & 0x0f) * 59 + (pixel >> 8) * 30;
-						GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
-					}	
-				}	
-			} else {
-				int Scale = Device->Depth - 4;
-				for (int r = 0; r < Height; r++) {
-					for (int c = 0; c < Width; c++) {
-						int pixel = *Image++;
-						pixel = (pixel & 0x0f) * 11 + ((pixel >> 4) & 0x0f) * 59 + (pixel >> 8) * 30;
-						GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
-					}	
-				}	
-			}	
-			break;				
-		}
-	}	
+		uint32_t *Source = (uint32_t*) Image;
+		
+		if (RGB_Mode == GDS_RGB666) {
+			int Scale = 6 - Device->Depth;
+			DRAW_RGB(Source,ToGray666);
+		} else if (RGB_Mode == GDS_RGB888) {
+			int Scale = 8 - Device->Depth;
+			DRAW_RGB(Source,ToGray888);
+		}	
+	} 
 	
 	Device->Dirty = true;	
 }
 
 /****************************************************************************************
- * Simply draw a RGB 8 bits  image (R:3,G:3,B:2) or plain grayscale
- * monochrome (0.2125 * color.r) + (0.7154 * color.g) + (0.0721 * color.b)
- * grayscale (0.3 * R) + (0.59 * G) + (0.11 * B) )
+ *  Decode the embedded image into pixel lines that can be used with the rest of the logic.
  */
-void GDS_DrawRGB8( struct GDS_Device* Device, uint8_t *Image, int x, int y, int Width, int Height, int RGB_Mode ) {
-	if (Device->DrawRGB8) {
-		Device->DrawRGB8( Device, Image, x, y, Width, Height, RGB_Mode );
-	} else if (RGB_Mode == GDS_GRAYSCALE) {
-		// 8 bits pixels
-		int Scale = 8 - Device->Depth;
-		for (int r = 0; r < Height; r++) {
-			for (int c = 0; c < Width; c++) {
-				GDS_DrawPixel( Device, c + x, r + y, *Image++ >> Scale);
-			}	
-		}	
-	} else if (Device->Depth < 3) {
-		// 3 bits pixels to be placed 
-		int Scale = 3 - Device->Depth;
-		for (int r = 0; r < Height; r++) {
-			for (int c = 0; c < Width; c++) {
-				int pixel = *Image++;
-				pixel = ((((pixel & 0x3) * 11) << 1) + ((pixel >> 2) & 0x7) * 59 + (pixel >> 5) * 30 + 1) / 100;
-				GDS_DrawPixel( Device, c + x, r + y, pixel >> Scale);
-			}	
-		}	
-	} else {	
-		// 3 bits pixels to be placed 
-		int Scale = Device->Depth  - 3;
-		for (int r = 0; r < Height; r++) {
-			for (int c = 0; c < Width; c++) {
-				int pixel = *Image++;
-				pixel = ((((pixel & 0x3) * 11) << 1) + ((pixel >> 2) & 0x7) * 59 + (pixel >> 5) * 30 + 1) / 100;
-				GDS_DrawPixel( Device, c + x, r + y, pixel << Scale);
-			}	
-		}	
-	}
-	
-	Device->Dirty = true;		
-}	
-
-//Decode the embedded image into pixel lines that can be used with the rest of the logic.
-bool GDS_DrawJPEG( struct GDS_Device* Device, uint8_t *Source, int x, int y, int Fit) {
+bool GDS_DrawJPEG(struct GDS_Device* Device, uint8_t *Source, int x, int y, int Fit) {
     JDEC Decoder;
     JpegCtx Context;
 	bool Ret = false;
@@ -313,9 +372,10 @@ bool GDS_DrawJPEG( struct GDS_Device* Device, uint8_t *Source, int x, int y, int
 
 		Context.XMin = x - Context.XOfs;
 		Context.YMin = y - Context.YOfs;
+		Context.Scaler = GetScaler(Device->Mode);
 					
 		// do decompress & draw
-		Res = jd_decomp(&Decoder, OutHandlerDirect, N);
+		Res = jd_decomp(&Decoder, Device->Mode > GDS_GRAYSCALE ? OutHandlerDirectColor : OutHandlerDirectGray, N);
 		if (Res == JDR_OK) {
 			Device->Dirty = true;
 			Ret = true;

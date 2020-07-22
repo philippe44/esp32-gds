@@ -239,6 +239,7 @@ struct GDS_Device* SSD1675_Detect(char *Driver, struct GDS_Device* Device) {
 	*Device = SSD1675;	
 	
 	Device->Depth = 1;
+	Device->Mode = GDS_MONO;
 	Device->Alloc = GDS_ALLOC_NONE;
 	
 	char *p;
