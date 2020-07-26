@@ -251,7 +251,7 @@ static bool Init( struct GDS_Device* Device ) {
 	
 	// find a page size that is not too small is an integer of height
 	Private->PageSize = min(8, PAGE_BLOCK / (Device->Width / 2));
-	Private->PageSize = Device->Height / (Device->Height / Private->PageSize) ;	
+	while (Private->PageSize && Device->Height != (Device->Height / Private->PageSize) * Private->PageSize) Private->PageSize--;
 	
 #ifdef SHADOW_BUFFER	
 #ifdef USE_IRAM
@@ -270,7 +270,6 @@ static bool Init( struct GDS_Device* Device ) {
 #ifdef USE_IRAM	
 	if (Device->Depth == 4 && Device->IF == GDS_IF_SPI) Private->iRAM = heap_caps_malloc( Private->PageSize * Device->Width / 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA );
 #endif	
-
 #endif
 
 	ESP_LOGI(TAG, "SSD1326/7 with bit depth %u, page %u, iRAM %p", Device->Depth, Private->PageSize, Private->iRAM);
@@ -319,6 +318,7 @@ static const struct GDS_Device SSD132x = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
 	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
 	.Update = Update4, .Init = Init,
+	.Mode = GDS_GRAYSCALE, .Depth = 4,
 };	
 
 struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
@@ -335,21 +335,18 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	((struct PrivateSpace*) Device->Private)->Model = Model;
 		
 	sscanf(Driver, "%*[^:]:%u", &Depth);
-	Device->Depth = Depth;
-	
-	if (Model == SSD1326 && Device->Depth == 1) {
+		
+	if (Model == SSD1326 && Depth == 1) {
 		Device->Update = Update1;
 		Device->DrawPixelFast = DrawPixel1Fast;
 		Device->DrawBitmapCBR = DrawBitmapCBR;
 		Device->ClearWindow = ClearWindow;
+		Device->Depth = 1;		
 		Device->Mode = GDS_MONO;
 #if !defined SHADOW_BUFFER && defined USE_IRAM	
 		Device->Alloc = GDS_ALLOC_IRAM_SPI;
 #endif	
-	} else {
-		Device->Depth = 4;
-		Device->Mode = GDS_GRAYSCALE;
-	}	
-		
+	}
+	
 	return Device;
 }

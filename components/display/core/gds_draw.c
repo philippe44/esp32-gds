@@ -199,7 +199,9 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 	if (Device->DrawBitmapCBR) {
 		Device->DrawBitmapCBR( Device, Data, Width, Height, Color );
 	} else if (Device->Depth == 1) {
+		
 		Height >>= 3;
+		
 		// need to do row/col swap and bit-reverse
 		for (int r = 0; r < Height; r++) {
 			uint8_t *optr = Device->Framebuffer + r*Device->Width, *iptr = Data + r;
@@ -211,8 +213,10 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 	} else if (Device->Depth == 4)	{
 		uint8_t *optr = Device->Framebuffer;
 		int LineLen = Device->Width >> 1;
+		
 		Height >>= 3;
 		Color &= 0x0f;
+		
 		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
 			uint8_t Byte = BitReverseTable256[*Data++];
 			// we need to linearize code to let compiler better optimize
@@ -238,8 +242,78 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 			// end of a column, move to next one
 			if (++r == Height) { c++; r = 0; optr = Device->Framebuffer + (c >> 1); }		
 		}
+	} else if (Device->Depth == 8) {
+		uint8_t *optr = Device->Framebuffer;
+		int LineLen = Device->Width;
+	
+		Height >>= 3;
+			
+		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
+			uint8_t Byte = BitReverseTable256[*Data++];
+		
+			// we need to linearize code to let compiler better optimize
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; 
+
+			// end of a column, move to next one
+			if (++r == Height) { c++; r = 0; optr = Device->Framebuffer + c; }		
+		}	
+	} else if (Device->Depth == 16) {
+		uint16_t *optr = (uint16_t*) Device->Framebuffer;
+		int LineLen = Device->Width;
+	
+		Height >>= 3;
+		Color = __builtin_bswap16(Color);
+	
+		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
+			uint8_t Byte = BitReverseTable256[*Data++];
+		
+			// we need to linearize code to let compiler better optimize
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			*optr = ((Byte & 0x01) * Color); optr += LineLen; 
+
+			// end of a column, move to next one
+			if (++r == Height) { c++; r = 0; optr = (uint16_t*) Device->Framebuffer + c; }		
+		}
+	} else if (Device->Depth == 24) {
+		uint8_t *optr = Device->Framebuffer;
+		int LineLen = Device->Width * 3;
+		
+		Height >>= 3;
+		if (Device->Mode == GDS_RGB666) Color = ((Color << 4) & 0xff0000) | ((Color << 2) & 0xff00) | (Color & 0x00ff);
+			
+		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
+			uint8_t Byte = BitReverseTable256[*Data++];
+		
+			// we need to linearize code to let compiler better optimize		
+			#define SET24(O,D) O[0]=(D)>>16; O[1]=(D)>>8; O[2]=(D);
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen; Byte >>= 1;
+			SET24(optr,(Byte & 0x01) * Color); optr += LineLen;
+
+			// end of a column, move to next one
+			if (++r == Height) { c++; r = 0; optr = Device->Framebuffer + c * 3; }		
+		}
 	} else {
 		Height >>= 3;
+		
 		// don't know bitdepth, use brute-force solution
 		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
 			uint8_t Byte = *Data++;

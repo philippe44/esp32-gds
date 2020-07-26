@@ -230,6 +230,8 @@ static const struct GDS_Device SSD1675 = {
 	.DrawBitmapCBR = DrawBitmapCBR, .ClearWindow = ClearWindow,
 	.DrawPixelFast = DrawPixelFast,
 	.Update = Update, .Init = Init,
+	.Mode = GDS_MONO, .Depth = 1,
+	.Alloc = GDS_ALLOC_NONE,
 };	
 
 struct GDS_Device* SSD1675_Detect(char *Driver, struct GDS_Device* Device) {
@@ -237,10 +239,6 @@ struct GDS_Device* SSD1675_Detect(char *Driver, struct GDS_Device* Device) {
 	
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	*Device = SSD1675;	
-	
-	Device->Depth = 1;
-	Device->Mode = GDS_MONO;
-	Device->Alloc = GDS_ALLOC_NONE;
 	
 	char *p;
 	struct PrivateSpace* Private = (struct PrivateSpace*) Device->Private;

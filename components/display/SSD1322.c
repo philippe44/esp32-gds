@@ -128,7 +128,7 @@ static bool Init( struct GDS_Device* Device ) {
 	
 	// find a page size that is not too small is an integer of height
 	Private->PageSize = min(8, PAGE_BLOCK / (Device->Width / 2));
-	Private->PageSize = Device->Height / (Device->Height / Private->PageSize) ;	
+	while (Private->PageSize && Device->Height != (Device->Height / Private->PageSize) * Private->PageSize) Private->PageSize--;
 	
 #ifdef SHADOW_BUFFER	
 	Private->Shadowbuffer = malloc( Device->FramebufferSize );	
@@ -189,6 +189,7 @@ static const struct GDS_Device SSD1322 = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
 	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
 	.Update = Update, .Init = Init,
+	.Mode = GDS_GRAYSCALE, .Depth = 4,
 };	
 
 struct GDS_Device* SSD1322_Detect(char *Driver, struct GDS_Device* Device) {
@@ -197,8 +198,6 @@ struct GDS_Device* SSD1322_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	
 	*Device = SSD1322;	
-	Device->Depth = 4;
-	Device->Mode = GDS_GRAYSCALE;
-		
+			
 	return Device;
 }

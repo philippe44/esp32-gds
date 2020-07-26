@@ -137,6 +137,10 @@ static const struct GDS_Device SH1106 = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
 	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
 	.Update = Update, .Init = Init,
+	.Depth = 1,
+#if !defined SHADOW_BUFFER && defined USE_IRAM	
+	.Alloc = GDS_ALLOC_IRAM_SPI;
+#endif		
 };	
 
 struct GDS_Device* SH1106_Detect(char *Driver, struct GDS_Device* Device) {
@@ -144,10 +148,7 @@ struct GDS_Device* SH1106_Detect(char *Driver, struct GDS_Device* Device) {
 	
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	*Device = SH1106;
-	Device->Depth = 1;
-#if !defined SHADOW_BUFFER && defined USE_IRAM	
-	Device->Alloc = GDS_ALLOC_IRAM_SPI;
-#endif	
+
 	ESP_LOGI(TAG, "SH1106 driver");
 	
 	return Device;

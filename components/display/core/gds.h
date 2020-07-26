@@ -5,11 +5,11 @@
 #include <stdbool.h>
 
 /* NOTE for drivers:
- The build-in DrawPixel(Fast), DrawCBR and ClearWindow are optimized for 1 bit 
- and 4 bits screen depth. For any other type of screen, DrawCBR and ClearWindow
- default to use DrawPixel, which is very sub-optimal. For such other depth, you 
- must supply the DrawPixelFast. The built-in 1 bit depth function are only for 
- screen with vertical framing (1 byte = 8 lines). For example SSD1326 in 
+ The build-in DrawPixel(Fast), DrawCBR and ClearWindow have optimized for 1 bit 
+ and 4 bits grayscale screen depth and 8, 16, 24 color. For any other type of screen, 
+ DrawCBR and ClearWindow default to use DrawPixel, which is very sub-optimal. For 
+ other depth, you  must supply the DrawPixelFast. The built-in 1 bit depth function 
+ are only for screen with vertical framing (1 byte = 8 lines). For example SSD1326 in 
  monochrome mode is not such type of screen, SH1106 and SSD1306 are
 */ 
 
@@ -37,6 +37,8 @@ void 	GDS_SetDirty( struct GDS_Device* Device );
 int 	GDS_GetWidth( struct GDS_Device* Device );
 int 	GDS_GetHeight( struct GDS_Device* Device );
 int 	GDS_GetDepth( struct GDS_Device* Device );
+int 	GDS_GetMode( struct GDS_Device* Device );
+int 	GDS_GrayMap( struct GDS_Device* Device, uint8_t Level );
 void 	GDS_ClearExt( struct GDS_Device* Device, bool full, ...);
 void 	GDS_Clear( struct GDS_Device* Device, int Color );
 void 	GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color );
