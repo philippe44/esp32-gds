@@ -9,22 +9,37 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "esp_log.h"
 
 #include "gds.h"
 #include "gds_private.h"
 
 static struct GDS_Device Display;
+static struct GDS_BacklightPWM PWMConfig;
 
 static char TAG[] = "gds";
 
-struct GDS_Device* GDS_AutoDetect( char *Driver, GDS_DetectFunc* DetectFunc[] ) {
+struct GDS_Device* GDS_AutoDetect( char *Driver, GDS_DetectFunc* DetectFunc[], struct GDS_BacklightPWM* PWM ) {
+	if (!Driver) return NULL;
+	if (PWM) PWMConfig = *PWM;
+	
 	for (int i = 0; DetectFunc[i]; i++) {
 		if (DetectFunc[i](Driver, &Display)) {
-			ESP_LOGD(TAG, "Detected driver %p", &Display);
+			if (PWM && PWM->Init) {
+				ledc_timer_config_t PWMTimer = {
+						.duty_resolution = LEDC_TIMER_13_BIT,
+						.freq_hz = 5000,                   
+						.speed_mode = LEDC_HIGH_SPEED_MODE,
+						.timer_num = PWMConfig.Timer,
+					};
+				ledc_timer_config(&PWMTimer);
+			}	
+			ESP_LOGD(TAG, "Detected driver %p with PWM %d", &Display, PWM ? PWM->Init : 0);			
 			return &Display;
 		}	
 	}
@@ -165,6 +180,22 @@ bool GDS_Init( struct GDS_Device* Device ) {
 		NullCheck( Device->Framebuffer, return false );
 	}	
 	
+	if (Device->Backlight.Pin >= 0) {
+		Device->Backlight.Channel = PWMConfig.Channel++;
+		Device->Backlight.PWM = PWMConfig.Max - 1;
+
+		ledc_channel_config_t PWMChannel = {
+            .channel    = Device->Backlight.Channel,
+            .duty       = Device->Backlight.PWM,
+            .gpio_num   = Device->Backlight.Pin,
+            .speed_mode = LEDC_HIGH_SPEED_MODE,
+            .hpoint     = 0,
+            .timer_sel  = PWMConfig.Timer,
+        };
+		
+		ledc_channel_config(&PWMChannel);
+	}
+	
 	bool Res = Device->Init( Device );
 	if (!Res && Device->Framebuffer) free(Device->Framebuffer);
 	return Res;
@@ -196,7 +227,15 @@ int GDS_GrayMap( struct GDS_Device* Device, uint8_t Level) {
 	return -1;
 }
 
-void GDS_SetContrast( struct GDS_Device* Device, uint8_t Contrast ) { if (Device->SetContrast) Device->SetContrast( Device, Contrast); }
+void GDS_SetContrast( struct GDS_Device* Device, uint8_t Contrast ) { 
+	if (Device->SetContrast) Device->SetContrast( Device, Contrast ); 
+	else if (Device->Backlight.Pin >= 0) {
+		Device->Backlight.PWM = PWMConfig.Max * powf(Contrast / 255.0, 3);
+		ledc_set_duty( LEDC_HIGH_SPEED_MODE, Device->Backlight.Channel, Device->Backlight.PWM );
+		ledc_update_duty( LEDC_HIGH_SPEED_MODE, Device->Backlight.Channel );		
+	}
+}
+	
 void GDS_SetHFlip( struct GDS_Device* Device, bool On ) { if (Device->SetHFlip) Device->SetHFlip( Device, On ); }
 void GDS_SetVFlip( struct GDS_Device* Device, bool On ) { if (Device->SetVFlip) Device->SetVFlip( Device, On ); }
 void GDS_SetDirty( struct GDS_Device* Device ) { Device->Dirty = true; }

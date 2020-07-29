@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
+#include "driver/ledc.h"
 #include "driver/spi_master.h"
 
 #include "gds.h"
@@ -41,18 +42,22 @@ int spi_system_host = SPI2_HOST;
 int spi_system_dc_gpio = 5;
 
 struct GDS_Device *display;
-extern GDS_DetectFunc SSD1306_Detect, SSD132x_Detect, SH1106_Detect, SSD1675_Detect, SSD1322_Detect, SSD1351_Detect;
-GDS_DetectFunc* drivers[] = { SH1106_Detect, SSD1306_Detect, SSD132x_Detect, SSD1675_Detect, SSD1322_Detect, SSD1351_Detect, NULL };
+extern GDS_DetectFunc SSD1306_Detect, SSD132x_Detect, SH1106_Detect, SSD1675_Detect, SSD1322_Detect, SSD1351_Detect, ST77xx_Detect;
+GDS_DetectFunc* drivers[] = { SH1106_Detect, SSD1306_Detect, SSD132x_Detect, SSD1675_Detect, SSD1322_Detect, SSD1351_Detect, ST77xx_Detect, NULL };
 
 bool init_display (char *config, char *welcome) {
 	int width = -1, height = -1;
 	char *p, driver[32] = "";
+	int BacklightPin = -1;
+	struct GDS_BacklightPWM PWMConfig = { 
+				.Channel = LEDC_CHANNEL_0, .Timer = LEDC_TIMER_0, .Max = (1 << LEDC_TIMER_13_BIT), .Init = true, 
+			};
 	
 	ESP_LOGI(TAG, "Initializing display with config: %s", config);
 	if ((p = strcasestr(config, "driver")) != NULL) sscanf(p, "%*[^=]=%31[^,]", driver);
 	ESP_LOGI(TAG, "Extracted drivername %s", driver);
 		
-	display = GDS_AutoDetect(driver, drivers);
+	display = GDS_AutoDetect(driver, drivers, &PWMConfig);
 	
 	if (!display) {
 		ESP_LOGW(TAG, "Unknown display type or no serial interface configured");
@@ -62,6 +67,7 @@ bool init_display (char *config, char *welcome) {
 	// no time for smart parsing - this is for tinkerers
 	if ((p = strcasestr(config, "width")) != NULL) width = atoi(strchr(p, '=') + 1);
 	if ((p = strcasestr(config, "height")) != NULL) height = atoi(strchr(p, '=') + 1);
+	if ((p = strcasestr(config, "back")) != NULL) BacklightPin = atoi(strchr(p, '=') + 1);
 
 	if (width == -1 || height == -1) {
 		ESP_LOGW(TAG, "No display configured %s [%d x %d]", config, width, height);
@@ -74,7 +80,7 @@ bool init_display (char *config, char *welcome) {
 		if ((p = strcasestr(config, "address")) != NULL) address = atoi(strchr(p, '=') + 1);
 		
 		GDS_I2CInit( i2c_system_port, -1, -1, i2c_system_speed ) ;
-		GDS_I2CAttachDevice( display, width, height, address, -1 );
+		GDS_I2CAttachDevice( display, width, height, address, -1, BacklightPin );
 		
 		ESP_LOGI(TAG, "Display is I2C on port %u", address);
 	} else if (strstr(config, "SPI") && spi_system_host != -1) {
@@ -82,13 +88,12 @@ bool init_display (char *config, char *welcome) {
 		
 		if ((p = strcasestr(config, "cs")) != NULL) CS_pin = atoi(strchr(p, '=') + 1);
 		if ((p = strcasestr(config, "speed")) != NULL) speed = atoi(strchr(p, '=') + 1);
-		if ((p = strcasestr(config, "rst")) != NULL) RST_pin = atoi(strchr(p, '=') + 1);
+		if ((p = strcasestr(config, "reset")) != NULL) RST_pin = atoi(strchr(p, '=') + 1);
 		
 		GDS_SPIInit( spi_system_host, spi_system_dc_gpio );
-        GDS_SPIAttachDevice( display, width, height, CS_pin, RST_pin, speed );
+        GDS_SPIAttachDevice( display, width, height, CS_pin, RST_pin, BacklightPin, speed );
 				
 		ESP_LOGI(TAG, "Display is SPI host %u with cs:%d", spi_system_host, CS_pin);
-		
 	}
 	
 	GDS_SetHFlip( display, strcasestr(config, "HFlip") ? true : false);
@@ -136,9 +141,10 @@ void app_main()
 	
 	spi_bus_initialize( spi_system_host, &BusConfig, 1 );
 	
-	init_display("SPI,driver=SSD1351,width=128,height=128,cs=18,speed=10000000,reset=25,VFlip,HFlip", "Hello SPI");
-	//init_display("SPI,driver=SSD1322,width=256,height=64,cs=18,speed=10000000,reset=25,VFlip,HFlip", "Hello SPI");
-	//init_display("SPI,driver=SSD1675:ready=26,width=250,height=122,cs=18,speed=1000000,reset=25", "Hello SPI");
+	init_display("SPI,driver=ST7735,width=160,height=128,cs=18,speed=8000000,reset=21,back=25,HFlip,VFlip", "Hello SPI");
+	//init_display("SPI,driver=SSD1351,width=128,height=128,cs=18,speed=10000000,reset=21,HFlip,VFlip", "Hello SPI");
+	//init_display("SPI,driver=SSD1322,width=256,height=64,cs=18,speed=10000000,reset=21,VFlip,HFlip", "Hello SPI");
+	//init_display("SPI,driver=SSD1675:ready=26,width=250,height=122,cs=18,speed=1000000,reset=21", "Hello SPI");
 #endif
 
 	if (!display) {
@@ -173,7 +179,7 @@ void app_main()
 	int image_width, image_height;
 	
 	// actual scaling factor is closest ^2
-	image = GDS_DecodeJPEG((uint8_t*) image_jpg_start, &image_width, &image_height, 1, GDS_RGB666);
+	image = GDS_DecodeJPEG((uint8_t*) image_jpg_start, &image_width, &image_height, 1, GDS_RGB565);
 	ESP_LOGI(TAG, "Image size %dx%d", image_width, image_height);
 	
 	while(1) {
@@ -184,7 +190,7 @@ void app_main()
 		GDS_ClearExt( display, false, false, 0, 32, -1, -1);
 
 		if (show == 1 && image) {
-			GDS_DrawRGB(display, image, 16, 32, image_width, image_height, GDS_RGB666);
+			GDS_DrawRGB(display, image, 16, 32, image_width, image_height, GDS_RGB565);
 		} else if (show == 2) {
 			GDS_DrawJPEG(display, (uint8_t*) image2_jpg_start, 0, 32, GDS_IMAGE_FIT | GDS_IMAGE_CENTER_X);		
 		} else {

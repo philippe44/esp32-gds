@@ -72,6 +72,11 @@ typedef struct spi_device_t* spi_device_handle_t;
 
 struct GDS_Device {
 	uint8_t IF;
+	int8_t RSTPin;
+	struct {
+		int8_t Pin, Channel;
+		int PWM;	
+	} Backlight;
 	union {
 		// I2C Specific
 		struct {
@@ -80,11 +85,10 @@ struct GDS_Device {
 		// SPI specific
 		struct {
 			spi_device_handle_t SPIHandle;
-			int8_t RSTPin;
 			int8_t CSPin;
 		};
 	};	
-
+	
     // cooked text mode
 	struct {
 		int16_t Y, Space;

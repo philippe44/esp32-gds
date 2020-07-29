@@ -66,13 +66,14 @@ bool GDS_I2CInit( int PortNumber, int SDA, int SCL, int Speed ) {
  * 
  * Returns true on successful init of display.
  */
-bool GDS_I2CAttachDevice( struct GDS_Device* Device, int Width, int Height, int I2CAddress, int RSTPin ) {
+bool GDS_I2CAttachDevice( struct GDS_Device* Device, int Width, int Height, int I2CAddress, int RSTPin, int BacklightPin ) {
     NullCheck( Device, return false );
 
     Device->WriteCommand = I2CDefaultWriteCommand;
     Device->WriteData = I2CDefaultWriteData;
     Device->Address = I2CAddress;
     Device->RSTPin = RSTPin;
+	Device->Backlight.Pin = BacklightPin;	
 	Device->IF = GDS_IF_I2C;
 	Device->Width = Width;
 	Device->Height = Height;

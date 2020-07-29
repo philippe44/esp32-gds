@@ -22,10 +22,14 @@ enum { GDS_MONO = 0, GDS_GRAYSCALE, GDS_RGB332, GDS_RGB444, GDS_RGB555, GDS_RGB5
 
 struct GDS_Device;
 struct GDS_FontDef;
+struct GDS_BacklightPWM { 
+	int Channel, Timer, Max;
+	bool Init;
+};
 
 typedef struct GDS_Device* GDS_DetectFunc(char *Driver, struct GDS_Device *Device);
 
-struct GDS_Device*	GDS_AutoDetect( char *Driver, GDS_DetectFunc* DetectFunc[] );
+struct GDS_Device*	GDS_AutoDetect( char *Driver, GDS_DetectFunc* DetectFunc[], struct GDS_BacklightPWM *PWM );
 
 void 	GDS_SetContrast( struct GDS_Device* Device, uint8_t Contrast );
 void 	GDS_DisplayOn( struct GDS_Device* Device );

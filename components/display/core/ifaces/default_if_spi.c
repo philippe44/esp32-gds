@@ -34,7 +34,7 @@ bool GDS_SPIInit( int SPI, int DC ) {
     return true;
 }
 
-bool GDS_SPIAttachDevice( struct GDS_Device* Device, int Width, int Height, int CSPin, int RSTPin, int Speed ) {
+bool GDS_SPIAttachDevice( struct GDS_Device* Device, int Width, int Height, int CSPin, int RSTPin, int BackLightPin, int Speed ) {
     spi_device_interface_config_t SPIDeviceConfig;
     spi_device_handle_t SPIDevice;
 
@@ -44,7 +44,7 @@ bool GDS_SPIAttachDevice( struct GDS_Device* Device, int Width, int Height, int 
 		ESP_ERROR_CHECK_NONFATAL( gpio_set_direction( CSPin, GPIO_MODE_OUTPUT ), return false );
 		ESP_ERROR_CHECK_NONFATAL( gpio_set_level( CSPin, 0 ), return false );
 	}	
-
+	
     memset( &SPIDeviceConfig, 0, sizeof( spi_device_interface_config_t ) );
 
     SPIDeviceConfig.clock_speed_hz = Speed > 0 ? Speed : SPI_MASTER_FREQ_8M;
@@ -59,6 +59,7 @@ bool GDS_SPIAttachDevice( struct GDS_Device* Device, int Width, int Height, int 
     Device->SPIHandle = SPIDevice;
     Device->RSTPin = RSTPin;
     Device->CSPin = CSPin;
+	Device->Backlight.Pin = BackLightPin;	
 	Device->IF = GDS_IF_SPI;
 	Device->Width = Width;
 	Device->Height = Height;
