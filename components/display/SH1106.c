@@ -73,8 +73,11 @@ static void Update( struct GDS_Device* Device ) {
 #endif	
 }
 
-static void SetHFlip( struct GDS_Device* Device, bool On ) { Device->WriteCommand( Device, On ? 0xA1 : 0xA0 ); }
-static void SetVFlip( struct GDS_Device *Device, bool On ) { Device->WriteCommand( Device, On ? 0xC8 : 0xC0 ); }
+static void SetLayout( struct GDS_Device* Device, bool HFlip, bool VFlip, bool Rotate ) {
+	Device->WriteCommand( Device, HFlip ? 0xA1 : 0xA0 );
+	Device->WriteCommand( Device, VFlip ? 0xC8 : 0xC0 );
+}	
+
 static void DisplayOn( struct GDS_Device* Device ) { Device->WriteCommand( Device, 0xAF ); }
 static void DisplayOff( struct GDS_Device* Device ) { Device->WriteCommand( Device, 0xAE ); }
 
@@ -117,8 +120,7 @@ static bool Init( struct GDS_Device* Device ) {
     Device->WriteCommand( Device, 0x40 + 0x00 );
 	Device->SetContrast( Device, 0x7F );
 	// set flip modes
-	Device->SetVFlip( Device, false );
-	Device->SetHFlip( Device, false );
+	Device->SetLayout( Device, false, false, false );
 	// no Display Inversion
     Device->WriteCommand( Device, 0xA6 );
 	// set Clocks
@@ -135,7 +137,7 @@ static bool Init( struct GDS_Device* Device ) {
 
 static const struct GDS_Device SH1106 = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
-	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
+	.SetLayout = SetLayout,
 	.Update = Update, .Init = Init,
 	.Depth = 1,
 #if !defined SHADOW_BUFFER && defined USE_IRAM	

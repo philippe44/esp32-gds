@@ -96,22 +96,15 @@ static void Update( struct GDS_Device* Device ) {
 #endif	
 }
 
-static void SetHFlip( struct GDS_Device* Device, bool On ) { 
+static void SetLayout( struct GDS_Device* Device, bool HFlip, bool VFlip, bool Rotate ) { 
 	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
-	Private->ReMap = On ? (Private->ReMap & ~(1 << 1)) : (Private->ReMap | (1 << 1));
+	Private->ReMap = HFlip ? (Private->ReMap & ~(1 << 1)) : (Private->ReMap | (1 << 1));
+	Private->ReMap = VFlip ? (Private->ReMap | (1 << 4)) : (Private->ReMap & ~(1 << 4));
 	Device->WriteCommand( Device, 0xA0 );
 	Device->WriteData( Device, &Private->ReMap, 1 );
 	WriteDataByte( Device, 0x11 );		
 }	
 
-static void SetVFlip( struct GDS_Device *Device, bool On ) { 
-	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
-	Private->ReMap = On ? (Private->ReMap | (1 << 4)) : (Private->ReMap & ~(1 << 4));
-	Device->WriteCommand( Device, 0xA0 );
-	Device->WriteData( Device, &Private->ReMap, 1 );
-	WriteDataByte( Device, 0x11 );		
-}	
-	
 static void DisplayOn( struct GDS_Device* Device ) { Device->WriteCommand( Device, 0xAF ); }
 static void DisplayOff( struct GDS_Device* Device ) { Device->WriteCommand( Device, 0xAE ); }
 
@@ -152,8 +145,7 @@ static bool Init( struct GDS_Device* Device ) {
 	
 	// set flip modes
 	Private->ReMap = 0;
-	Device->SetVFlip( Device, false );
-	Device->SetHFlip( Device, false );
+	Device->SetLayout( Device, false, false, false);
 	
 	// set Clocks
     Device->WriteCommand( Device, 0xB3 );
@@ -187,7 +179,7 @@ static bool Init( struct GDS_Device* Device ) {
 
 static const struct GDS_Device SSD1322 = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
-	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
+	.SetLayout = SetLayout,
 	.Update = Update, .Init = Init,
 	.Mode = GDS_GRAYSCALE, .Depth = 4,
 };	

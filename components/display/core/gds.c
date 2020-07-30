@@ -236,8 +236,7 @@ void GDS_SetContrast( struct GDS_Device* Device, uint8_t Contrast ) {
 	}
 }
 	
-void GDS_SetHFlip( struct GDS_Device* Device, bool On ) { if (Device->SetHFlip) Device->SetHFlip( Device, On ); }
-void GDS_SetVFlip( struct GDS_Device* Device, bool On ) { if (Device->SetVFlip) Device->SetVFlip( Device, On ); }
+void GDS_SetLayout( struct GDS_Device* Device, bool HFlip, bool VFlip, bool Rotate ) { if (Device->SetLayout) Device->SetLayout( Device, HFlip, VFlip, Rotate ); }
 void GDS_SetDirty( struct GDS_Device* Device ) { Device->Dirty = true; }
 int	GDS_GetWidth( struct GDS_Device* Device ) { return Device->Width; }
 int	GDS_GetHeight( struct GDS_Device* Device ) { return Device->Height; }

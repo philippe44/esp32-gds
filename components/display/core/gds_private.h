@@ -101,7 +101,7 @@ struct GDS_Device {
 	
 	uint8_t	Alloc;	
 	uint8_t* Framebuffer;
-    uint16_t FramebufferSize;
+    uint32_t FramebufferSize;
 	bool Dirty;
 
 	// default fonts when using direct draw	
@@ -117,8 +117,7 @@ struct GDS_Device {
 	void (*SetContrast)( struct GDS_Device* Device, uint8_t Contrast );
 	void (*DisplayOn)( struct GDS_Device* Device );
 	void (*DisplayOff)( struct GDS_Device* Device );
-	void (*SetHFlip)( struct GDS_Device* Device, bool On );
-	void (*SetVFlip)( struct GDS_Device* Device, bool On );
+	void (*SetLayout)( struct GDS_Device* Device, bool HFlip, bool VFlip, bool Rotate );
 	// must provide for depth other than 1 (vertical) and 4 (may provide for optimization)
 	void (*DrawPixelFast)( struct GDS_Device* Device, int X, int Y, int Color );
 	void (*DrawBitmapCBR)(struct GDS_Device* Device, uint8_t *Data, int Width, int Height, int Color );
@@ -130,8 +129,8 @@ struct GDS_Device {
     WriteCommandProc WriteCommand;
     WriteDataProc WriteData;
 
-	// 16 bytes for whatever the driver wants (should be aligned as it's 32 bits)	
-	uint32_t Private[4];
+	// 32 bytes for whatever the driver wants (should be aligned as it's 32 bits)	
+	uint32_t Private[8];
 };
 
 bool GDS_Reset( struct GDS_Device* Device );

@@ -222,22 +222,19 @@ static void DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, i
 	}
 }
 
-static void SetHFlip( struct GDS_Device* Device, bool On ) { 
+static void SetLayout( struct GDS_Device* Device, bool HFlip, bool VFlip, bool Rotate ) { 
 	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
-	if (Private->Model == SSD1326) Private->ReMap = On ? (Private->ReMap | ((1 << 0) | (1 << 2))) : (Private->ReMap & ~((1 << 0) | (1 << 2)));
-	else Private->ReMap = On ? (Private->ReMap | ((1 << 0) | (1 << 1))) : (Private->ReMap & ~((1 << 0) | (1 << 1)));
+	if (Private->Model == SSD1326) {
+		Private->ReMap = HFlip ? (Private->ReMap | ((1 << 0) | (1 << 2))) : (Private->ReMap & ~((1 << 0) | (1 << 2)));
+		Private->ReMap = HFlip ? (Private->ReMap | (1 << 1)) : (Private->ReMap & ~(1 << 1));		
+	} else {
+		Private->ReMap = VFlip ? (Private->ReMap | ((1 << 0) | (1 << 1))) : (Private->ReMap & ~((1 << 0) | (1 << 1)));
+		Private->ReMap = VFlip ? (Private->ReMap | (1 << 4)) : (Private->ReMap & ~(1 << 4));
+	}	
 	Device->WriteCommand( Device, 0xA0 );
 	Device->WriteCommand( Device, Private->ReMap );
 }	
 
-static void SetVFlip( struct GDS_Device *Device, bool On ) { 
-	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
-	if (Private->Model == SSD1326) Private->ReMap = On ? (Private->ReMap | (1 << 1)) : (Private->ReMap & ~(1 << 1));
-	else Private->ReMap = On ? (Private->ReMap | (1 << 4)) : (Private->ReMap & ~(1 << 4));
-	Device->WriteCommand( Device, 0xA0 );
-	Device->WriteCommand( Device, Private->ReMap );
-}	
-	
 static void DisplayOn( struct GDS_Device* Device ) { Device->WriteCommand( Device, 0xAF ); }
 static void DisplayOff( struct GDS_Device* Device ) { Device->WriteCommand( Device, 0xAE ); }
 
@@ -291,8 +288,7 @@ static bool Init( struct GDS_Device* Device ) {
 	Device->WriteCommand( Device, 0x00 );
 	Device->SetContrast( Device, 0x7F );
 	// set flip modes
-	Device->SetVFlip( Device, false );
-	Device->SetHFlip( Device, false );
+	Device->SetLayout( Device, false, false, false );
 	// no Display Inversion
     Device->WriteCommand( Device, 0xA6 );
 	// set Clocks
@@ -316,7 +312,7 @@ static bool Init( struct GDS_Device* Device ) {
 
 static const struct GDS_Device SSD132x = {
 	.DisplayOn = DisplayOn, .DisplayOff = DisplayOff, .SetContrast = SetContrast,
-	.SetVFlip = SetVFlip, .SetHFlip = SetHFlip,
+	.SetLayout = SetLayout,
 	.Update = Update4, .Init = Init,
 	.Mode = GDS_GRAYSCALE, .Depth = 4,
 };	

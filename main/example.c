@@ -25,6 +25,7 @@
 #include "gds_image.h"
 
 //#define I2C_MODE
+#define LILYGO
 
 #define I2C_ADDRESS	0x3C
 
@@ -39,7 +40,11 @@ extern const uint8_t image2_jpg_end[]     asm("_binary_image2_jpg_end");
 int i2c_system_port = 0;
 int i2c_system_speed = 400000;
 int spi_system_host = SPI2_HOST;
+#ifdef LILYGO
+int spi_system_dc_gpio = 27;
+#else
 int spi_system_dc_gpio = 5;
+#endif
 
 struct GDS_Device *display;
 extern GDS_DetectFunc SSD1306_Detect, SSD132x_Detect, SH1106_Detect, SSD1675_Detect, SSD1322_Detect, SSD1351_Detect, ST77xx_Detect;
@@ -95,9 +100,8 @@ bool init_display (char *config, char *welcome) {
 				
 		ESP_LOGI(TAG, "Display is SPI host %u with cs:%d", spi_system_host, CS_pin);
 	}
-	
-	GDS_SetHFlip( display, strcasestr(config, "HFlip") ? true : false);
-	GDS_SetVFlip( display, strcasestr(config, "VFlip") ? true : false);
+
+	GDS_SetLayout( display, strcasestr(config, "HFlip"), strcasestr(config, "VFlip"), strcasestr(config, "rotate"));
 	GDS_SetFont( display, &Font_droid_sans_fallback_15x17 );
 	GDS_TextPos( display, GDS_FONT_MEDIUM, GDS_TEXT_CENTERED, GDS_TEXT_CLEAR | GDS_TEXT_UPDATE, welcome);
 	
@@ -121,8 +125,13 @@ void app_main()
 	};
 #else	
 	spi_bus_config_t BusConfig = {
+#ifdef LILYGO		
+		.mosi_io_num = 19,
+        .sclk_io_num = 18,
+#else		
 		.mosi_io_num = 22,
-        .sclk_io_num = 23,
+        .sclk_io_num = 23,		
+#endif		
         .miso_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1
@@ -141,10 +150,15 @@ void app_main()
 	
 	spi_bus_initialize( spi_system_host, &BusConfig, 1 );
 	
-	init_display("SPI,driver=ST7735,width=160,height=128,cs=18,speed=8000000,reset=21,back=25,HFlip,VFlip", "Hello SPI");
+#ifdef LILYGO	
+	init_display("SPI,driver=ST7789,width=240,height=240,cs=5,speed=16000000,back=12,HFlip,VFlip", "Hello SPI");	
+#else	
+	init_display("SPI,driver=ST7789,width=240,height=240,cs=18,speed=16000000,reset=21,back=4,rotate,VFlip", "Hello SPI");	
+	//init_display("SPI,driver=ST7735,width=160,height=128,cs=18,speed=10000000,reset=21,back=4,VFlip,rotate", "Hello SPI");
 	//init_display("SPI,driver=SSD1351,width=128,height=128,cs=18,speed=10000000,reset=21,HFlip,VFlip", "Hello SPI");
 	//init_display("SPI,driver=SSD1322,width=256,height=64,cs=18,speed=10000000,reset=21,VFlip,HFlip", "Hello SPI");
 	//init_display("SPI,driver=SSD1675:ready=26,width=250,height=122,cs=18,speed=1000000,reset=21", "Hello SPI");
+#endif	
 #endif
 
 	if (!display) {
@@ -162,7 +176,7 @@ void app_main()
 	int height = GDS_GetHeight(display);
 	int bar_width = (width - bar_gap * (NB_BARS - 1)) / NB_BARS;
 	int border = (width - (bar_width + bar_gap) * NB_BARS + bar_gap) / 2;
-	
+
 	GDS_SetContrast(display, 255);
 	ESP_LOGI(TAG, "displaying %u bars of %u pixels with space %u and borders %u", NB_BARS, bar_width, bar_gap, border);
 	GDS_ClearExt(display, true);
@@ -202,7 +216,7 @@ void app_main()
 			
 				if (bars[i].current > bars[i].max) bars[i].max = bars[i].current;
 				else if (bars[i].max) bars[i].max--;
-			
+
 				for (int j = 0; j < bars[i].current; j += 2) 
 					GDS_DrawLine(display, x1, y1 - j, x1 + bar_width - 1, y1 - j, GDS_COLOR_WHITE);
 			
