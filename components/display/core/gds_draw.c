@@ -5,7 +5,6 @@
  * This software is released under the MIT License.
  * https://opensource.org/licenses/MIT
  */
-
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -45,9 +44,13 @@ __attribute__( ( always_inline ) ) static inline void SwapInt( int* a, int* b ) 
     *a = Temp;
 }
 
-// un-comment if need to be instanciated for external callers
-extern inline void IRAM_ATTR GDS_DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color );
-extern inline void IRAM_ATTR GDS_DrawPixel( struct GDS_Device* Device, int X, int Y, int Color );
+void IRAM_ATTR GDS_DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color ) {
+	DrawPixelFast( Device, X, Y, Color );
+}
+
+void IRAM_ATTR GDS_DrawPixel( struct GDS_Device* Device, int X, int Y, int Color ) {
+	DrawPixel( Device, X, Y, Color );
+}
 
 void GDS_DrawHLine( struct GDS_Device* Device, int x, int y, int Width, int Color ) {
     int XEnd = x + Width;
@@ -60,7 +63,7 @@ void GDS_DrawHLine( struct GDS_Device* Device, int x, int y, int Width, int Colo
 	if (y < 0) y = 0;
 	else if (y >= Device->Height) y = Device->Height - 1;
 
-    for ( ; x < XEnd; x++ ) GDS_DrawPixelFast( Device, x, y, Color );
+    for ( ; x < XEnd; x++ ) DrawPixelFast( Device, x, y, Color );
 }
 
 void GDS_DrawVLine( struct GDS_Device* Device, int x, int y, int Height, int Color ) {
@@ -74,7 +77,7 @@ void GDS_DrawVLine( struct GDS_Device* Device, int x, int y, int Height, int Col
 	if (y < 0) y = 0;
 	else if (YEnd >= Device->Height) YEnd = Device->Height - 1;
 
-    for ( ; y < YEnd; y++ ) GDS_DrawPixel( Device, x, y, Color );
+    for ( ; y < YEnd; y++ ) DrawPixel( Device, x, y, Color );
 }
 
 static inline void DrawWideLine( struct GDS_Device* Device, int x0, int y0, int x1, int y1, int Color ) {
@@ -94,7 +97,7 @@ static inline void DrawWideLine( struct GDS_Device* Device, int x0, int y0, int 
 
     for ( ; x < x1; x++ ) {
         if ( IsPixelVisible( Device, x, y ) == true ) {
-            GDS_DrawPixelFast( Device, x, y, Color );
+            DrawPixelFast( Device, x, y, Color );
         }
 
         if ( Error > 0 ) {
@@ -123,7 +126,7 @@ static inline void DrawTallLine( struct GDS_Device* Device, int x0, int y0, int 
 
     for ( ; y < y1; y++ ) {
         if ( IsPixelVisible( Device, x, y ) == true ) {
-            GDS_DrawPixelFast( Device, x, y, Color );
+            DrawPixelFast( Device, x, y, Color );
         }
 
         if ( Error > 0 ) {
@@ -317,28 +320,28 @@ void GDS_DrawBitmapCBR(struct GDS_Device* Device, uint8_t *Data, int Width, int 
 		// don't know bitdepth, use brute-force solution
 		for (int i = Width * Height, r = 0, c = 0; --i >= 0;) {
 			uint8_t Byte = *Data++;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 7, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 6, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 5, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 4, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 3, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 2, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 1, (Byte & 0x01) * Color ); Byte >>= 1;
-			GDS_DrawPixelFast( Device, c, (r << 3) + 0, (Byte & 0x01) * Color ); 
+			DrawPixelFast( Device, c, (r << 3) + 7, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 6, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 5, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 4, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 3, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 2, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 1, (Byte & 0x01) * Color ); Byte >>= 1;
+			DrawPixelFast( Device, c, (r << 3) + 0, (Byte & 0x01) * Color ); 
 			if (++r == Height) { c++; r = 0; }			
 		}
 		/* for better understanding, here is the mundane version 
 		for (int x = 0; x < Width; x++) {
 			for (int y = 0; y < Height; y++) {
 				uint8_t Byte = *Data++;
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 0, ((Byte >> 7) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 1, ((Byte >> 6) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 2, ((Byte >> 5) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 3, ((Byte >> 4) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 4, ((Byte >> 3) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 5, ((Byte >> 2) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 6, ((Byte >> 1) & 0x01) * Color );
-				GDS_DrawPixel4Fast( Device, x, y * 8 + 7, ((Byte >> 0) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 0, ((Byte >> 7) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 1, ((Byte >> 6) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 2, ((Byte >> 5) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 3, ((Byte >> 4) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 4, ((Byte >> 3) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 5, ((Byte >> 2) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 6, ((Byte >> 1) & 0x01) * Color );
+				GDSDrawPixel4Fast( Device, x, y * 8 + 7, ((Byte >> 0) & 0x01) * Color );
 			}
 		}
 		*/

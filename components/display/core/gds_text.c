@@ -99,7 +99,7 @@ bool GDS_TextLine(struct GDS_Device* Device, int N, int Pos, int Attr, char *Tex
 		int Y_min = max(0, Device->Lines[N].Y), Y_max = max(0, Device->Lines[N].Y + Device->Lines[N].Font->Height);
 		for (int c = (Attr & GDS_TEXT_CLEAR_EOL) ? X : 0; c < Device->Width; c++) 
 			for (int y = Y_min; y < Y_max; y++)
-				GDS_DrawPixelFast( Device, c, y, GDS_COLOR_BLACK );
+				DrawPixelFast( Device, c, y, GDS_COLOR_BLACK );
 	}
 		
 	GDS_FontDrawString( Device, X, Device->Lines[N].Y, Text, GDS_COLOR_WHITE );

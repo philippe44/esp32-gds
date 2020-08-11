@@ -89,7 +89,7 @@ void GDS_FontDrawChar( struct GDS_Device* Device, char Character, int x, int y, 
                 YBit = ( i + OffsetY ) & 0x07;
 
                 if ( GlyphData[ YByte ] & BIT( YBit ) ) {
-                    GDS_DrawPixel( Device, x, y, Color );
+                    DrawPixel( Device, x, y, Color );
                 }            
             }
 

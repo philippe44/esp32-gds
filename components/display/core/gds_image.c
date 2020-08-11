@@ -133,7 +133,7 @@ static unsigned OutHandler(JDEC *Decoder, void *Bitmap, JRECT *Frame) {
 		if (y < Context->YMin) continue;															\
 		for (int x = Frame->left; x <= Frame->right; x++) {											\
 			if (x < Context->XMin) continue;														\
-			GDS_DrawPixel( Context->Device, x + Context->XOfs, y + Context->YOfs, F(Pixels) >> S);	\
+			DrawPixel( Context->Device, x + Context->XOfs, y + Context->YOfs, F(Pixels) >> S);	\
 			Pixels += 3;																			\
 		}																							\
 	}
@@ -274,13 +274,13 @@ static inline int ToSelf(uint8_t **Pixel) {
 	if (Scale > 0) {														\
 		for (int r = 0; r < Height; r++) {									\
 			for (int c = 0; c < Width; c++) {								\
-				GDS_DrawPixel( Device, c + x, r + y, F(S) >> Scale);		\
+				DrawPixel( Device, c + x, r + y, F(S) >> Scale);		\
 			}																\
 		}																	\
 	} else {																\
 		for (int r = 0; r < Height; r++) {									\
 			for (int c = 0; c < Width; c++) {								\
-				GDS_DrawPixel( Device, c + x, r + y, F(S) << -Scale);	\
+				DrawPixel( Device, c + x, r + y, F(S) << -Scale);	\
 			}																\
 		}																	\
 	}									
@@ -289,7 +289,7 @@ static inline int ToSelf(uint8_t **Pixel) {
 	T *S = (T*) Image;									\
 	for (int r = 0; r < Height; r++) {					\
 		for (int c = 0; c < Width; c++) {				\
-			GDS_DrawPixel(Device, c + x, r + y, *S++);	\
+			DrawPixel(Device, c + x, r + y, *S++);	\
 		}												\
 	}																	
 	
@@ -298,7 +298,7 @@ static inline int ToSelf(uint8_t **Pixel) {
 	for (int r = 0; r < Height; r++) {								\
 		for (int c = 0; c < Width; c++) {							\
 			uint32_t v = *S++; v |= *S++ << 8; v |= *S++ << 16;		\
-			GDS_DrawPixel(Device, c + x, r + y, v);					\
+			DrawPixel(Device, c + x, r + y, v);					\
 		}															\
 	}	
 

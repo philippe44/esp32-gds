@@ -136,7 +136,7 @@ struct GDS_Device {
 bool GDS_Reset( struct GDS_Device* Device );
 bool GDS_Init( struct GDS_Device* Device );
 
-inline bool IsPixelVisible( struct GDS_Device* Device, int x, int y )  {
+static inline bool IsPixelVisible( struct GDS_Device* Device, int x, int y )  {
     bool Result = (
         ( x >= 0 ) &&
         ( x < Device->Width ) &&
@@ -153,7 +153,7 @@ inline bool IsPixelVisible( struct GDS_Device* Device, int x, int y )  {
     return Result;
 }
 
-inline void IRAM_ATTR GDS_DrawPixel1Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void DrawPixel1Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
     uint32_t YBit = ( Y & 0x07 );
     uint8_t* FBOffset;
 
@@ -174,48 +174,48 @@ inline void IRAM_ATTR GDS_DrawPixel1Fast( struct GDS_Device* Device, int X, int 
     }
 }
 
-inline void IRAM_ATTR GDS_DrawPixel4Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void DrawPixel4Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
 	uint8_t* FBOffset = Device->Framebuffer + ( (Y * Device->Width >> 1) + (X >> 1));
 	*FBOffset = X & 0x01 ? (*FBOffset & 0x0f) | ((Color & 0x0f) << 4) : ((*FBOffset & 0xf0) | (Color & 0x0f));
 }
 
-inline void IRAM_ATTR GDS_DrawPixel8Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void DrawPixel8Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
 	Device->Framebuffer[Y * Device->Width + X] = Color;
 }
 
 // assumes that Color is 16 bits R..RG..GB..B from MSB to LSB and FB wants 1st serialized byte to start with R
-inline void IRAM_ATTR GDS_DrawPixel16Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void DrawPixel16Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
 	uint16_t* FBOffset = (uint16_t*) Device->Framebuffer + Y * Device->Width + X;
 	*FBOffset = __builtin_bswap16(Color);
 }
 
 // assumes that Color is 18 bits RGB from MSB to LSB RRRRRRGGGGGGBBBBBB, so byte[0] is B 
 // FB is 3-bytes packets and starts with R for serialization so 0,1,2 ... = xxRRRRRR xxGGGGGG xxBBBBBB 
-inline void IRAM_ATTR GDS_DrawPixel18Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void DrawPixel18Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
 	uint8_t* FBOffset = Device->Framebuffer + (Y * Device->Width + X) * 3;
 	*FBOffset++ = Color >> 12; *FBOffset++ = (Color >> 6) & 0x3f; *FBOffset = Color & 0x3f;
 }
 
 // assumes that Color is 24 bits RGB from MSB to LSB RRRRRRRRGGGGGGGGBBBBBBBB, so byte[0] is B 
 // FB is 3-bytes packets and starts with R for serialization so 0,1,2 ... = RRRRRRRR GGGGGGGG BBBBBBBB 
-inline void IRAM_ATTR GDS_DrawPixel24Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void DrawPixel24Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
 	uint8_t* FBOffset = Device->Framebuffer + (Y * Device->Width + X) * 3;
 	*FBOffset++ = Color >> 16; *FBOffset++ = Color >> 8; *FBOffset = Color;
 }
 
-inline void IRAM_ATTR GDS_DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void IRAM_ATTR DrawPixelFast( struct GDS_Device* Device, int X, int Y, int Color ) {
     if (Device->DrawPixelFast) Device->DrawPixelFast( Device, X, Y, Color );
-	else if (Device->Depth == 4) GDS_DrawPixel4Fast( Device, X, Y, Color );
-	else if (Device->Depth == 1) GDS_DrawPixel1Fast( Device, X, Y, Color );
-	else if (Device->Depth == 16) GDS_DrawPixel16Fast( Device, X, Y, Color );	
-	else if (Device->Depth == 24 && Device->Mode == GDS_RGB666) GDS_DrawPixel18Fast( Device, X, Y, Color );	
-	else if (Device->Depth == 24 && Device->Mode == GDS_RGB888) GDS_DrawPixel24Fast( Device, X, Y, Color );	
-	else if (Device->Depth == 8) GDS_DrawPixel8Fast( Device, X, Y, Color );	
+	else if (Device->Depth == 4) DrawPixel4Fast( Device, X, Y, Color );
+	else if (Device->Depth == 1) DrawPixel1Fast( Device, X, Y, Color );
+	else if (Device->Depth == 16) DrawPixel16Fast( Device, X, Y, Color );	
+	else if (Device->Depth == 24 && Device->Mode == GDS_RGB666) DrawPixel18Fast( Device, X, Y, Color );	
+	else if (Device->Depth == 24 && Device->Mode == GDS_RGB888) DrawPixel24Fast( Device, X, Y, Color );	
+	else if (Device->Depth == 8) DrawPixel8Fast( Device, X, Y, Color );	
 }	
 
-inline void IRAM_ATTR GDS_DrawPixel( struct GDS_Device* Device, int x, int y, int Color ) {
+static inline void IRAM_ATTR DrawPixel( struct GDS_Device* Device, int x, int y, int Color ) {
     if ( IsPixelVisible( Device, x, y ) == true ) {
-        GDS_DrawPixelFast( Device, x, y, Color );
+        DrawPixelFast( Device, x, y, Color );
     }
 }
 

@@ -172,15 +172,17 @@ static void Update24( struct GDS_Device* Device ) {
 	// always update by full lines
 	SetColumnAddress( Device, Private->Offset.Width, Device->Width - 1);
 	
-	for (int r = 0; r < Device->Height; r += Private->PageSize) {
+	for (int r = 0; r < Device->Height; r += min(Private->PageSize, Device->Height - r)) {
+		int Height = min(Private->PageSize, Device->Height - r);
+		
 		SetRowAddress( Device, Private->Offset.Height + r, Private->Offset.Height + r + Height - 1 );
 		Device->WriteCommand(Device, ENABLE_WRITE);
 		
 		if (Private->iRAM) {
-			memcpy(Private->iRAM, Device->Framebuffer + r * Device->Width * 3, Private->PageSize * Device->Width * 3 );
-			Device->WriteData( Device, Private->iRAM, Private->PageSize * Device->Width * 3 );
+			memcpy(Private->iRAM, Device->Framebuffer + r * Device->Width * 3, Height * Device->Width * 3 );
+			Device->WriteData( Device, Private->iRAM, Height * Device->Width * 3 );
 		} else	{
-			Device->WriteData( Device, Device->Framebuffer + r * Device->Width * 3, Private->PageSize * Device->Width * 3 );
+			Device->WriteData( Device, Device->Framebuffer + r * Device->Width * 3, Height * Device->Width * 3 );
 		}	
 	}	
 #endif	
@@ -244,9 +246,8 @@ static bool Init( struct GDS_Device* Device ) {
 	WriteByte( Device, Private->MADCtl );		
 		
 	// set flip modes & contrast
-	GDS_SetContrast( Device, 0x00 );
+	GDS_SetContrast( Device, 0x7f );
 	Device->SetLayout( Device, false, false, false );
-	
 	
 	// set screen depth (16/18)
 	Device->WriteCommand( Device, 0x3A );

@@ -103,7 +103,7 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 				int c = x1;
 				// for a row that is not on a boundary, no optimization possible
 				while (r & 0x07 && r <= y2) {
-					for (c = x1; c <= x2; c++) GDS_DrawPixelFast( Device, c, r, Color );
+					for (c = x1; c <= x2; c++) DrawPixelFast( Device, c, r, Color );
 					r++;
 				}
 				// go fast if we have more than 8 lines to write
@@ -111,7 +111,7 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 					memset(optr + Width * r + x1, _Color, x2 - x1 + 1);
 					r += 8;
 				} else while (r <= y2) {
-					for (c = x1; c <= x2; c++) GDS_DrawPixelFast( Device, c, r, Color );
+					for (c = x1; c <= x2; c++) DrawPixelFast( Device, c, r, Color );
 					r++;
 				}
 			}
@@ -127,10 +127,10 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 			// try to do byte processing as much as possible
 			for (int r = y1; r <= y2; r++) {
 				int c = x1;
-				if (c & 0x01) GDS_DrawPixelFast( Device, c++, r, Color);
+				if (c & 0x01) DrawPixelFast( Device, c++, r, Color);
 				int chunk = (x2 - c + 1) >> 1;
 				memset(optr + ((r * Width + c)  >> 1), _Color, chunk);
-				if (c + chunk <= x2) GDS_DrawPixelFast( Device, x2, r, Color);
+				if (c + chunk <= x2) DrawPixelFast( Device, x2, r, Color);
 			}
 		}	
 	} else if (Device->Depth == 8) {
@@ -142,7 +142,7 @@ void GDS_ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2,
 	} else {
 		for (int y = y1; y <= y2; y++) {
 			for (int x = x1; x <= x2; x++) {
-				GDS_DrawPixelFast( Device, x, y, Color);
+				DrawPixelFast( Device, x, y, Color);
 			}
 		}
 	}
