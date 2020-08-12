@@ -118,7 +118,7 @@ static void Update( struct GDS_Device* Device ) {
 }
 
 // remember that for these ELD drivers W and H are "inverted"
-static inline void DrawPixelLocal( struct GDS_Device* Device, int X, int Y, int Color ) {
+static inline void _DrawPixel( struct GDS_Device* Device, int X, int Y, int Color ) {
     uint32_t YBit = ( Y & 0x07 );
     Y>>= 3;
 
@@ -129,7 +129,7 @@ static inline void DrawPixelLocal( struct GDS_Device* Device, int X, int Y, int 
 static void ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int y2, int Color ) {
 	for (int r = y1; r <= y2; r++) {
 		for (int c = x1; c <= x2; c++) {
-			DrawPixelLocal( Device, c, r, Color );
+			_DrawPixel( Device, c, r, Color );
 		}	
 	}
 }
@@ -228,7 +228,7 @@ static bool Init( struct GDS_Device* Device ) {
 
 static const struct GDS_Device SSD1675 = {
 	.DrawBitmapCBR = DrawBitmapCBR, .ClearWindow = ClearWindow,
-	.DrawPixelFast = DrawPixelLocal,
+	.DrawPixelFast = _DrawPixel,
 	.Update = Update, .Init = Init,
 	.Mode = GDS_MONO, .Depth = 1,
 	.Alloc = GDS_ALLOC_NONE,

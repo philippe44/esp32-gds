@@ -168,7 +168,7 @@ static void Update1( struct GDS_Device* Device ) {
 }
 
 // in 1 bit mode, SSD1326 has a different memory map than SSD1306 and SH1106
-static void IRAM_ATTR DrawPixel1FastLocal( struct GDS_Device* Device, int X, int Y, int Color ) {
+static void IRAM_ATTR _DrawPixel1Fast( struct GDS_Device* Device, int X, int Y, int Color ) {
     uint32_t XBit = ( X & 0x07 );
     uint8_t* FBOffset = Device->Framebuffer + ( ( Y * Device->Width + X ) >> 3 );
 
@@ -188,12 +188,12 @@ static void ClearWindow( struct GDS_Device* Device, int x1, int y1, int x2, int 
 	for (int r = y1; r <= y2; r++) {
 		int c = x1;
 		// for a row that is not on a boundary, not column opt can be done, so handle all columns on that line
-		while (c & 0x07 && c <= x2) DrawPixel1FastLocal( Device, c++, r, Color );
+		while (c & 0x07 && c <= x2) _DrawPixel1Fast( Device, c++, r, Color );
 		// at this point we are aligned on column boundary
 		int chunk = (x2 - c + 1) >> 3;
 		memset(optr + Width * r + (c >> 3), _Color, chunk );
 		c += chunk * 8;
-		while (c <= x2) DrawPixel1FastLocal( Device, c++, r, Color );
+		while (c <= x2) _DrawPixel1Fast( Device, c++, r, Color );
 	}
 }
 
@@ -320,7 +320,7 @@ static const struct GDS_Device SSD132x = {
 struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	uint8_t Model;
 	int Depth;
-	
+		
 	if (strcasestr(Driver, "SSD1326")) Model = SSD1326;
 	else if (strcasestr(Driver, "SSD1327")) Model = SSD1327;
 	else return NULL;
@@ -328,13 +328,14 @@ struct GDS_Device* SSD132x_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 	
 	*Device = SSD132x;	
-	((struct PrivateSpace*) Device->Private)->Model = Model;
+	struct PrivateSpace *Private = (struct PrivateSpace*) Device->Private;
+	Private->Model = Model;
 		
 	sscanf(Driver, "%*[^:]:%u", &Depth);
 		
 	if (Model == SSD1326 && Depth == 1) {
 		Device->Update = Update1;
-		Device->DrawPixelFast = DrawPixel1FastLocal;
+		Device->DrawPixelFast = _DrawPixel1Fast;
 		Device->DrawBitmapCBR = DrawBitmapCBR;
 		Device->ClearWindow = ClearWindow;
 		Device->Depth = 1;		

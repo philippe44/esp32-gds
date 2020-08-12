@@ -282,8 +282,9 @@ struct GDS_Device* ST77xx_Detect(char *Driver, struct GDS_Device* Device) {
 	if (!Device) Device = calloc(1, sizeof(struct GDS_Device));
 		
 	*Device = ST77xx;	
-	((struct PrivateSpace*) Device->Private)->Model = Model;
 	sscanf(Driver, "%*[^:]:%u", &Depth);
+	struct PrivateSpace* Private = (struct PrivateSpace*) Device->Private;
+	Private->Model = Model;
 	
 	if (Depth == 18) {
 		Device->Mode = GDS_RGB666;
