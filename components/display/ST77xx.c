@@ -90,7 +90,7 @@ static void Update16( struct GDS_Device* Device ) {
 			for (int i = FirstRow; i <= LastRow; i++) {
 				memcpy(optr, Private->Shadowbuffer + (i * Device->Width + FirstCol) * 2, ChunkSize);
 				optr += ChunkSize;
-				if (optr - Private->iRAM < PAGE_BLOCK && i < LastRow) continue;
+				if (optr - Private->iRAM <= (PAGE_BLOCK - ChunkSize) && i < LastRow) continue;
 				Device->WriteData(Device, Private->iRAM, optr - Private->iRAM);
 				optr = Private->iRAM;
 			}
@@ -157,7 +157,7 @@ static void Update24( struct GDS_Device* Device ) {
 			for (int i = FirstRow; i <= LastRow; i++) {
 				memcpy(optr, Private->Shadowbuffer + (i * Device->Width + FirstCol) * 3, ChunkSize);
 				optr += ChunkSize;
-				if (optr - Private->iRAM < PAGE_BLOCK && i < LastRow) continue;
+				if (optr - Private->iRAM <= (PAGE_BLOCK - ChunkSize) && i < LastRow) continue;
 				Device->WriteData(Device, Private->iRAM, optr - Private->iRAM);
 				optr = Private->iRAM;
 			}	

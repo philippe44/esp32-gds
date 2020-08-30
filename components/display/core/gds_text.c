@@ -35,12 +35,20 @@ static const struct GDS_FontDef *GuessFont( struct GDS_Device *Device, int FontT
 	case GDS_FONT_MEDIUM:			
 	default:		
 		return &Font_droid_sans_fallback_15x17;	
+#ifdef USE_LARGE_FONTS
 	case GDS_FONT_LARGE:	
 		return &Font_droid_sans_fallback_24x28;
 		break;		
 	case GDS_FONT_SEGMENT:			
 		if (Device->Height == 32) return &Font_Tarable7Seg_16x32;
 		else return &Font_Tarable7Seg_32x64;
+#else
+	case GDS_FONT_LARGE:	
+	case GDS_FONT_SEGMENT:			
+		ESP_LOGW(TAG, "large fonts disabled");
+		return &Font_droid_sans_fallback_15x17;
+		break;		
+#endif	
 	}
 }
 
