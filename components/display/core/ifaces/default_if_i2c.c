@@ -35,7 +35,7 @@ static bool I2CDefaultWriteData( struct GDS_Device* Device, const uint8_t* Data,
 bool GDS_I2CInit( int PortNumber, int SDA, int SCL, int Speed ) {
 	I2CPortNumber = PortNumber;
 	
-	I2CWait = pdMS_TO_TICKS( Speed ? Speed / 4000 : 100 );
+	I2CWait = pdMS_TO_TICKS( Speed ? (250 * 250000) / Speed : 250 );
 	
 	if (SDA != -1 && SCL != -1) {
 		i2c_config_t Config = { 0 };

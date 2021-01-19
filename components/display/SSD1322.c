@@ -147,23 +147,28 @@ static bool Init( struct GDS_Device* Device ) {
 	Private->ReMap = 0;
 	Device->SetLayout( Device, false, false, false);
 	
+	// set Display Enhancement
+    Device->WriteCommand( Device, 0xB4 );
+	WriteDataByte( Device, 0xA0 );
+	WriteDataByte( Device, 0xB5 );
+	
 	// set Clocks
     Device->WriteCommand( Device, 0xB3 );
-	WriteDataByte( Device, 0x91 );
+	WriteDataByte( Device, 0xB2 ); // 0x91 seems to be common but is too slow for 5.5'
 	
 	// set MUX
 	Device->WriteCommand( Device, 0xCA );
 	WriteDataByte( Device, Device->Height - 1 );
 	
-	// phase 1 & 2 period (needed?)	
+	// phase 1 & 2 period
 	Device->WriteCommand( Device, 0xB1 );
-	WriteDataByte( Device, 0xE2 );
+	WriteDataByte( Device, 0xE3 );	// 0xE2 was recommended
 	
-	// set pre-charge V (needed?°)
+	// set pre-charge V 
 	Device->WriteCommand( Device, 0xBB );
-	WriteDataByte( Device, 0x1F );
+	WriteDataByte( Device, 0x0F); // 0x1F causes column interferences 
 	
-	// set COM deselect voltage (needed?)
+	// set COM deselect voltage
 	Device->WriteCommand( Device, 0xBE );
 	WriteDataByte( Device, 0x07 );
 	
