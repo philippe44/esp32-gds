@@ -5,4 +5,4 @@ More to come, but big thank you to https://github.com/TaraHoleInIt/tarablessd130
 
 I've changed a few things, added JPEG management and added a small framework to easily add other drivers independently
 
-So far I've added SSD1326, SSD1327 and SH1106 plus SSD1675 (eInk)
+So far I've added SSD1306, SSD1322, SSD1326, SSD1327, SH1106 and ST77xx
